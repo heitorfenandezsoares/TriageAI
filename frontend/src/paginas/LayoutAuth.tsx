@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useIdioma } from '../i18n/idioma'
 import { IDIOMAS, type Idioma, type Modo } from '../i18n/textos'
-import { SetaEsq, Escudo } from './icones'
+import { SetaEsq, Escudo } from '../componentes/icones'
 
 interface Props {
   modo: Modo

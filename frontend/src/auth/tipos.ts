@@ -4,6 +4,7 @@ export type Modulo = 'fila' | 'triagem' | 'leitos' | 'indicadores'
 export interface Usuario {
   nome: string
   perfil: Perfil
+  contato?: string
 }
 
 export interface Sessao {
