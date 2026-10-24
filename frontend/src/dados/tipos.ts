@@ -1,13 +1,26 @@
-export type Perfil = 'recepcionista' | 'enfermeiro' | 'gestor' | 'paciente'
-export type Modulo = 'fila' | 'triagem' | 'leitos' | 'indicadores'
+import type { NivelManchester } from '../i18n/textos'
 
-export interface Usuario {
-  nome: string
-  perfil: Perfil
-  contato?: string // e-mail verificado do paciente (chave dos dados dele)
+export type SetorLeito = 'enfermaria' | 'uti' | 'observacao'
+export type StatusLeito = 'ocupado' | 'disponivel' | 'limpeza' | 'reservado'
+
+export interface PacienteFila {
+  id: number
+  ini: string
+  idade: number
+  q: number
+  nivel: NivelManchester
+  espera: number 
+  risco: number 
 }
 
-export interface Sessao {
-  usuario: Usuario
-  expiraEm: number // timestamp (ms)
+export interface Leito {
+  id: string
+  setor: SetorLeito
+  status: StatusLeito
+}
+
+export interface DadosPainel {
+  fila: PacienteFila[]
+  leitos: Leito[]
+  atualizadoEm: number
 }
