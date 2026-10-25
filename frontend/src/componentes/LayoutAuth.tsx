@@ -10,11 +10,11 @@ interface Props {
   sub: string
   aviso: string
   voltar: { href: string; texto: string }
-  toggle?: boolean
   children: ReactNode
 }
 
-export default function LayoutAuth({ modo, eyebrow, titulo, sub, aviso, voltar, toggle, children }: Props) {
+// Estrutura comum das telas de acesso: login, criar conta e recuperar senha.
+export default function LayoutAuth({ modo, eyebrow, titulo, sub, aviso, voltar, children }: Props) {
   const { lang, setLang, t } = useIdioma()
   const l = t.login
   const atual = (alvo: Modo): 'page' | undefined => (modo === alvo ? 'page' : undefined)
@@ -38,12 +38,6 @@ export default function LayoutAuth({ modo, eyebrow, titulo, sub, aviso, voltar, 
         </div>
 
         <div className="lg-form-area">
-          {toggle && (
-            <nav className="lg-toggle" aria-label={l.abas}>
-              <a href="#/login/paciente" aria-current={atual('paciente')}>{l.abaPaciente}</a>
-              <a href="#/login/profissional" aria-current={atual('profissional')}>{l.abaProf}</a>
-            </nav>
-          )}
           {children}
         </div>
 
