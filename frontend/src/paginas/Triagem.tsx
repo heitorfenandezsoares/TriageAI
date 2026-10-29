@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
+import ChatbotIA from '../componentes/ChatbotIA'
 import { sugerirClassificacao, type Consciencia, type Sugestao } from '../dados/servicoTriagem'
 import { ORDEM_NIVEL } from '../dados/manchester'
 import { useIdioma } from '../i18n/idioma'
@@ -207,6 +208,7 @@ export default function Triagem() {
           </>
         )}
       </main>
+      <ChatbotIA />
     </div>
   )
 }

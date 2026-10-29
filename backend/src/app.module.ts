@@ -14,12 +14,13 @@ import { AuthModule } from './auth/auth.module.js';
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '3306', 10),
+      port: parseInt(process.env.DB_PORT || '3306', 10, ),
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
       synchronize: true, // Use carefully in prod
+      
     }),
     PatientsModule, 
     BedsModule, UsersModule, AuthModule

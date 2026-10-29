@@ -9,6 +9,7 @@ export default function CabecalhoPublico() {
       <a className="logo" href="#/">TriageAi</a>
       <nav className="menu" aria-label={t.nav.principal}>
         <a href="#/sobre">{t.nav.sobre}</a>
+        <a href="#contato">{t.nav.contato ?? 'Contato'}</a>
         <button type="button" className="menu-item">{t.nav.empresas} ▾</button>
         <select className="seletor-idioma" value={lang} onChange={(e) => setLang(e.target.value as Idioma)} aria-label={t.nav.idioma}>
           {IDIOMAS.map((i) => <option key={i.codigo} value={i.codigo}>{i.rotulo}</option>)}
