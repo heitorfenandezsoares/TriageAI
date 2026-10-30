@@ -6,4 +6,8 @@ async function bootstrap() {
   app.enableCors();
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
-await bootstrap();
+
+bootstrap().catch((err) => {
+  console.error('Falha ao iniciar a aplicação:', err);
+  process.exit(1);
+});
