@@ -48,4 +48,3 @@ export default function App() {
   if (rota.startsWith('/') && rota !== '/') return <NaoEncontrada />
   return <Home />
 }
-

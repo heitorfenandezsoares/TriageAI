@@ -1,12 +1,9 @@
-import { useState } from 'react'
 import PainelDemo from '../componentes/PainelDemo'
-import ChatbotIA from '../componentes/ChatbotIA'
 import { useIdioma, rico } from '../i18n/idioma'
 import { IDIOMAS, type Idioma } from '../i18n/textos'
 
 export default function Home() {
   const { lang, setLang, t } = useIdioma()
-  const [chatAberto, setChatAberto] = useState(false)
 
   return (
     <>
@@ -14,16 +11,7 @@ export default function Home() {
         <a className="logo" href="#inicio">TriageAi</a>
         <nav className="menu" aria-label={t.nav.principal}>
           <a href="#sobre">{t.nav.sobre}</a>
-          <a href="#como">Como funciona</a>
-          <a href="#contato">{t.nav.contato ?? 'Contato'}</a>
-          <button
-            type="button"
-            className="btn-chat-nav"
-            onClick={() => setChatAberto(true)}
-            aria-label="Abrir assistente virtual com IA"
-          >
-            <span>💬</span> {t.nav.chat ?? 'Chat IA'}
-          </button>
+          <button type="button" className="menu-item">{t.nav.empresas} ▾</button>
           <select
             className="seletor-idioma"
             value={lang}
@@ -48,18 +36,7 @@ export default function Home() {
             <ul className="beneficios">
               {t.hero.beneficios.map((b) => <li key={b}>{b}</li>)}
             </ul>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
-              <button
-                type="button"
-                className="btn btn-cheio btn-grande"
-                onClick={() => setChatAberto(true)}
-              >
-                💬 Falar com Chatbot IA
-              </button>
-              <a className="btn btn-contorno btn-grande" href="#/login/paciente">
-                {t.hero.iniciar}
-              </a>
-            </div>
+            <button type="button" className="btn btn-cheio btn-grande">{t.hero.iniciar}</button>
           </div>
           <PainelDemo />
         </section>
@@ -70,7 +47,7 @@ export default function Home() {
           <p>{t.sobre.p2}</p>
         </section>
 
-        <section className="bloco" id="como">
+        <section className="bloco">
           <h2>{t.como.titulo}</h2>
           <div className="grade-etapas">
             {t.como.etapas.map((e) => (
@@ -82,7 +59,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bloco pilares" id="pilares">
+        <section className="bloco pilares">
           <h2>{t.pilares.titulo}</h2>
           <div className="grade-pilares">
             {t.pilares.itens.map((p) => (
@@ -93,65 +70,7 @@ export default function Home() {
             ))}
           </div>
         </section>
-
-        {/* Seção de Contato para orientar visitantes */}
-        <section className="bloco contato" id="contato">
-          <h2>Contato e Atendimento</h2>
-          <p style={{ maxWidth: '680px', marginBottom: '16px', fontSize: '0.9rem' }}>
-            Tem dúvidas sobre o TriageAi, deseja agendar uma demonstração ou implementar nossa solução de triagem inteligente em sua instituição de saúde? Fale diretamente com nossa equipe.
-          </p>
-
-          <div className="contato-grade">
-            <article className="contato-card">
-              <h3>📧 E-mail</h3>
-              <p>Envie sua mensagem ou dúvida técnica:</p>
-              <strong>contato@triageai.com.br</strong>
-            </article>
-
-            <article className="contato-card">
-              <h3>📞 Telefone & WhatsApp</h3>
-              <p>Atendimento direto e suporte:</p>
-              <strong>(11) 4002-8922</strong>
-            </article>
-
-            <article className="contato-card">
-              <h3>🕒 Horário de Atendimento</h3>
-              <p>Segunda a Sexta-feira</p>
-              <strong>08:00 às 18:00 (Brasília)</strong>
-            </article>
-
-            <article className="contato-card">
-              <h3>📍 Localização</h3>
-              <p>São Paulo - SP</p>
-              <strong>Atendimento em todo o Brasil</strong>
-            </article>
-          </div>
-
-          <div className="contato-cta-box">
-            <div>
-              <strong style={{ display: 'block', marginBottom: '4px' }}>Deseja tirar dúvidas rápidas agora mesmo?</strong>
-              <p>Nosso assistente virtual com IA está online para responder suas dúvidas sobre a empresa e serviços.</p>
-            </div>
-            <button
-              type="button"
-              className="btn btn-cheio"
-              onClick={() => setChatAberto(true)}
-            >
-              💬 Iniciar Chat com IA
-            </button>
-          </div>
-        </section>
       </main>
-
-      <footer style={{ borderTop: '1px solid #e7dfd5', padding: '28px 24px', textAlign: 'center', fontSize: '0.82rem', color: '#666', background: 'var(--fundo)' }}>
-        <p>© 2026 TriageAi — Classificação de risco inteligente e apoio à decisão clínica. Todos os direitos reservados.</p>
-      </footer>
-
-      {/* Componente Chatbot com IA */}
-      <ChatbotIA
-        abertoControlado={chatAberto}
-        onToggleAberto={setChatAberto}
-      />
     </>
   )
 }

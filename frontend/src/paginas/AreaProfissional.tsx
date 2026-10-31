@@ -11,9 +11,10 @@ import { useIdioma } from '../i18n/idioma'
 export default function AreaProfissional() {
   const { sessao } = useAuth()
   const { lang, t } = useIdioma()
-  const modulos = sessao ? MODULOS_POR_PERFIL[sessao.usuario.perfil] : []
-  const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
+  const dados = useDadosTempoReal()
   if (!sessao) return null
+
+  const modulos = MODULOS_POR_PERFIL[sessao.usuario.perfil]
   const hora = new Date(dados.atualizadoEm).toLocaleTimeString(lang === 'pt' ? 'pt-BR' : lang)
 
   return (

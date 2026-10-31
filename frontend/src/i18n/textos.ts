@@ -14,7 +14,7 @@ interface TextosLoginPerfil { eyebrow: string; titulo: string; sub: string; camp
 
 export interface Textos {
   titulo: string
-  nav: { principal: string; sobre: string; empresas: string; idioma: string; paciente: string; profissional: string; contato?: string; chat?: string }
+  nav: { principal: string; sobre: string; empresas: string; idioma: string; paciente: string; profissional: string }
   hero: { titulo: string; beneficios: string[]; iniciar: string }
   sobre: { titulo: string; p1: string; p2: string }
   como: { titulo: string; etapas: Item[] }
@@ -111,7 +111,7 @@ export const IDIOMAS: { codigo: Idioma; rotulo: string }[] = [
 export const textos: Record<Idioma, Textos> = {
   pt: {
     titulo: 'TriageAi — Classificação de risco inteligente',
-    nav: { principal: 'Principal', sobre: 'Sobre nós', empresas: 'Para empresas', idioma: 'Idioma', paciente: 'Sou Paciente', profissional: 'Acesso Profissional', contato: 'Contato', chat: 'Chat IA' },
+    nav: { principal: 'Principal', sobre: 'Sobre nós', empresas: 'Para empresas', idioma: 'Idioma', paciente: 'Sou Paciente', profissional: 'Acesso Profissional' },
     hero: {
       titulo: 'Classificação de risco inteligente e ágil para o seu atendimento',
       beneficios: ['Analise os seus sintomas', 'Esteja pronto para a consulta', 'Auxílio da IA para uma classificação de risco mais rápida e precisa'],
@@ -269,7 +269,7 @@ export const textos: Record<Idioma, Textos> = {
 
   en: {
     titulo: 'TriageAi — Smart risk classification',
-    nav: { principal: 'Main', sobre: 'About us', empresas: 'For businesses', idioma: 'Language', paciente: "I'm a Patient", profissional: 'Professional Access', contato: 'Contact', chat: 'AI Chat' },
+    nav: { principal: 'Main', sobre: 'About us', empresas: 'For businesses', idioma: 'Language', paciente: "I'm a Patient", profissional: 'Professional Access' },
     hero: {
       titulo: 'Smart, fast risk classification for your care',
       beneficios: ['Check your symptoms', 'Arrive ready for your appointment', 'AI support for faster, more accurate risk classification'],
@@ -427,7 +427,7 @@ export const textos: Record<Idioma, Textos> = {
 
   es: {
     titulo: 'TriageAi — Clasificación de riesgo inteligente',
-    nav: { principal: 'Principal', sobre: 'Sobre nosotros', empresas: 'Para empresas', idioma: 'Idioma', paciente: 'Soy Paciente', profissional: 'Acceso Profesional', contato: 'Contacto', chat: 'Chat IA' },
+    nav: { principal: 'Principal', sobre: 'Sobre nosotros', empresas: 'Para empresas', idioma: 'Idioma', paciente: 'Soy Paciente', profissional: 'Acceso Profesional' },
     hero: {
       titulo: 'Clasificación de riesgo inteligente y ágil para su atención',
       beneficios: ['Analice sus síntomas', 'Llegue listo para la consulta', 'Apoyo de la IA para una clasificación de riesgo más rápida y precisa'],
