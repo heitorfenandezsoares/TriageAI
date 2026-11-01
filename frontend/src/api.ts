@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3006'
+const rawApiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3006'
+const API_URL = rawApiUrl.replace(/\/+$/, '')
 const CHAVE_TOKEN = 'triageai:token'
 
 // status 0 = não conseguiu falar com o servidor (rede fora do ar, CORS, servidor desligado)
@@ -32,7 +33,8 @@ export async function apiFetch<T = unknown>(endpoint: string, options: RequestIn
 
   let resposta: Response
   try {
-    resposta = await fetch(`${API_URL}${endpoint}`, { ...options, headers })
+    const caminho = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    resposta = await fetch(`${API_URL}${caminho}`, { ...options, headers })
   } catch {
     throw new ErroApi('rede', 0)
   }
