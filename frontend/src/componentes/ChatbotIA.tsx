@@ -17,15 +17,15 @@ interface ChatbotIAProps {
 const CHIPS_SUGESTOES = [
   'O que é o TriageAI?',
   'Quais são os serviços?',
+  'Como funciona o Protocolo de Manchester?',
   'Como acessar a Área do Paciente?',
   'Como acessar a Área Profissional?',
-  'Protocolo de Manchester',
   'Página de Contato',
 ]
 
 const MENSAGEM_BOAS_VINDAS =
   'Olá! Seja muito bem-vindo(a) à **TriageAI**! 👋\n\n' +
-  'Sou o assistente virtual da plataforma. Meu objetivo é dar as boas-vindas aos visitantes na página principal, tirar dúvidas gerais sobre nossa empresa e serviços, e ajudar você a encontrar o que procura.\n\n' +
+  'Sou o assistente virtual da plataforma. Meu objetivo é dar as boas-vindas aos visitantes na página principal, tirar dúvidas gerais sobre nossa empresa e serviços, e ajudar você a encontrar o que procura com praticidade.\n\n' +
   'Como posso te ajudar hoje?'
 
 function normalizar(texto: string): string {
@@ -41,14 +41,14 @@ function normalizar(texto: string): string {
  * - Dar as boas-vindas aos visitantes na página principal
  * - Tirar dúvidas gerais sobre nossa empresa e serviços
  * - Ajudar o usuário a encontrar o que procura
- * - Sempre amigável, educado, claro e conciso
- * - Se não souber alguma informação, orientar o usuário a procurar a página de 'Contato'
+ * - Sempre amigável, educado e conciso
+ * - Se não souber alguma informação, oriente o usuário a procurar a página de 'Contato'
  */
 export function responderChatbot(pergunta: string): string {
   const p = normalizar(pergunta)
 
-  // Saudações
-  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|e ai|tudo bem)/.test(p)) {
+  // Saudações e boas-vindas
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|e ai|tudo bem|alo)/.test(p)) {
     return (
       'Olá! Seja muito bem-vindo(a) à TriageAI! Tudo ótimo por aqui, e com você? 😊\n\n' +
       'Estou à disposição para tirar qualquer dúvida sobre nossa empresa, explicar nossos serviços de triagem hospitalar com IA ou te orientar sobre onde encontrar o que precisa. Em que posso te ajudar?'
@@ -117,7 +117,7 @@ export function responderChatbot(pergunta: string): string {
     )
   }
 
-  // Área do Paciente
+  // Área do Paciente / Espera / Fila
   if (
     p.includes('paciente') ||
     p.includes('sou paciente') ||
@@ -216,7 +216,7 @@ export function responderChatbot(pergunta: string): string {
       '• **E-mail:** contato@triageai.com.br\n' +
       '• **Telefone:** (11) 4002-8922\n' +
       '• **Horário:** Segunda a Sexta, das 8h às 18h\n\n' +
-      'Ficaremos felizes em te ajudar!'
+      'Ficaremos muito felizes em te ajudar!'
     )
   }
 
@@ -251,16 +251,13 @@ function horaAtual(): string {
  * Renderiza textos simples com suporte a links no formato [Texto](#href) e **negrito**
  */
 function renderizarTexto(texto: string, aoClicarLink?: (href: string) => void) {
-  // Separa por parágrafos / linhas
   const linhas = texto.split('\n')
   return linhas.map((linha, li) => {
     if (!linha.trim()) return <br key={li} />
 
-    // Trata listas com bullet
     const ehBullet = linha.trim().startsWith('•')
     const conteudoLinha = ehBullet ? linha.trim().substring(1).trim() : linha
 
-    // Expressão regular para encontrar links [rótulo](url) ou negrito **texto**
     const partes: (string | { tipo: 'link'; texto: string; href: string } | { tipo: 'bold'; texto: string })[] = []
     let cursor = 0
     const regex = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*/g
@@ -271,10 +268,8 @@ function renderizarTexto(texto: string, aoClicarLink?: (href: string) => void) {
         partes.push(conteudoLinha.substring(cursor, match.index))
       }
       if (match[1] && match[2]) {
-        // Link markdown
         partes.push({ tipo: 'link', texto: match[1], href: match[2] })
       } else if (match[3]) {
-        // Negrito
         partes.push({ tipo: 'bold', texto: match[3] })
       }
       cursor = regex.lastIndex
@@ -292,7 +287,6 @@ function renderizarTexto(texto: string, aoClicarLink?: (href: string) => void) {
             href={p.href}
             onClick={(e) => {
               if (p.href.startsWith('#')) {
-                // Se for âncora interna como #contato, rola suavemente
                 const elemento = document.querySelector(p.href)
                 if (elemento) {
                   e.preventDefault()
@@ -350,7 +344,6 @@ export default function ChatbotIA({ abertoInicial = false, abertoControlado, onT
     onToggleAberto?.(novoEstado)
   }
 
-  // Auto-scroll para a última mensagem
   useEffect(() => {
     if (aberto && corpoRef.current) {
       corpoRef.current.scrollTo({
@@ -360,7 +353,6 @@ export default function ChatbotIA({ abertoInicial = false, abertoControlado, onT
     }
   }, [mensagens, digitando, aberto])
 
-  // Foco no input ao abrir
   useEffect(() => {
     if (aberto) {
       setTimeout(() => inputRef.current?.focus(), 150)
@@ -382,7 +374,6 @@ export default function ChatbotIA({ abertoInicial = false, abertoControlado, onT
     setInputTexto('')
     setDigitando(true)
 
-    // Pequena pausa (600ms) para simular o processamento da IA
     setTimeout(() => {
       const respostaTexto = responderChatbot(textoLimpo)
       const novaMsgBot: MensagemChat = {

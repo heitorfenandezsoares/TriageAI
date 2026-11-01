@@ -52,7 +52,11 @@ export async function cadastrarPaciente(dados: DadosCadastro): Promise<void> {
   try {
     await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(dados) })
   } catch (e) {
-    throw new ErroAuth(e instanceof ErroApi && e.status === 0 ? 'rede' : 'cadastro')
+    if (e instanceof ErroApi) {
+      if (e.status === 0) throw new ErroAuth('rede')
+      throw new Error(e.message)
+    }
+    throw new ErroAuth('cadastro')
   }
 }
 

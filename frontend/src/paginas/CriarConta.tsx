@@ -47,7 +47,11 @@ export default function CriarConta() {
       await cadastrarPaciente({ nome, id, senha })
       setCriado(true)
     } catch (err: any) {
-      setErro(err.message && err.message !== 'cadastro' ? err.message : c.erro)
+      if (err.message === 'rede') {
+        setErro('Não foi possível conectar ao servidor da API. Verifique a conexão ou se o servidor está ativo.')
+      } else {
+        setErro(err.message && err.message !== 'cadastro' ? err.message : c.erro)
+      }
     } finally {
       setCarregando(false)
     }
