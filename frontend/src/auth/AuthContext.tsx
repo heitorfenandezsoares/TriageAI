@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Sessao, Usuario } from './tipos'
+import { normalizarPerfil } from './permissoes'
+import { limparToken } from '../api'
 
 interface ContextoAuth {
   sessao: Sessao | null
@@ -16,7 +18,11 @@ function carregar(): Sessao | null {
     const bruto = sessionStorage.getItem(CHAVE)
     if (!bruto) return null
     const s = JSON.parse(bruto) as Sessao
-    return s.expiraEm > Date.now() ? s : null
+    if (s.expiraEm > Date.now()) {
+      s.usuario.perfil = normalizarPerfil(s.usuario.perfil)
+      return s
+    }
+    return null
   } catch {
     return null
   }
@@ -26,14 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Sessao | null>(carregar)
 
   const iniciarSessao = useCallback((usuario: Usuario) => {
-    const nova: Sessao = { usuario, expiraEm: Date.now() + DURACAO }
+    const usuarioNormalizado: Usuario = {
+      ...usuario,
+      perfil: normalizarPerfil(usuario.perfil),
+    }
+    const nova: Sessao = { usuario: usuarioNormalizado, expiraEm: Date.now() + DURACAO }
     setSessao(nova)
-    try { sessionStorage.setItem(CHAVE, JSON.stringify(nova)) } catch {  }
+    try { sessionStorage.setItem(CHAVE, JSON.stringify(nova)) } catch { }
   }, [])
 
   const sair = useCallback(() => {
     setSessao(null)
-    try { sessionStorage.removeItem(CHAVE) } catch {  }
+    limparToken()
+    try { sessionStorage.removeItem(CHAVE) } catch { }
   }, [])
 
   useEffect(() => {
