@@ -11,15 +11,26 @@ export class AuthService {
   ) {}
 
   async signIn(email: string, pass: string): Promise<any> {
+    // 1. Busca primeiro na tabela dedicada de profissionais (users_professionals)
+    const prof = await this.usersService.findOneProfessional(email);
+    if (prof && (await bcrypt.compare(pass, prof.senhaHash))) {
+      const payload = { sub: prof.id, email: prof.email, perfil: prof.perfil, nome: prof.nome };
+      return {
+        access_token: await this.jwtService.signAsync(payload),
+        usuario: { nome: prof.nome, perfil: prof.perfil },
+      };
+    }
+
+    // 2. Se não encontrar, busca na tabela de usuários gerais (pacientes)
     const user = await this.usersService.findOne(email);
-    
-    if (user && await bcrypt.compare(pass, user.senhaHash)) {
+    if (user && (await bcrypt.compare(pass, user.senhaHash))) {
       const payload = { sub: user.id, email: user.email, perfil: user.perfil, nome: user.nome };
       return {
         access_token: await this.jwtService.signAsync(payload),
-        usuario: { nome: user.nome, perfil: user.perfil }
+        usuario: { nome: user.nome, perfil: user.perfil },
       };
     }
+
     throw new UnauthorizedException('Credenciais inválidas');
   }
 
@@ -36,7 +47,7 @@ export class AuthService {
       email: dados.id,
       senhaHash,
       nome: dados.nome,
-      perfil: 'paciente' // Perfil padrão para novos cadastros públicos
+      perfil: 'paciente', // Perfil padrão para novos cadastros públicos
     });
 
     return { message: 'Conta criada com sucesso!' };

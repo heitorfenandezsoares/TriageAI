@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import CabecalhoPublico from '../componentes/CabecalhoPublico'
-import IdentificacaoPaciente from './IdentificacaoPaciente'
 import { useAuth } from '../auth/AuthContext'
 import { idPaciente, salvarPreTriagem } from '../dados/paciente'
-import { PASSOS, ehAlerta, temSinalDeAlerta, type Passo, type Resposta } from '../dados/entrevista'
+import { PASSOS, ehAlerta, temSinalDeAlerta, type Passo, type PassoId } from '../dados/entrevista'
 import { useIdioma } from '../i18n/idioma'
 
 // Pré-triagem guiada para o paciente. Roteiro fixo, sem IA: não classifica o paciente.
 // O paciente se identifica por código (e-mail) e o resumo fica na conta dele; a identidade
 // completa (CPF e documento) é confirmada pela equipe na triagem presencial.
 // TODO: enviar o resumo ao backend em vez de guardá-lo no navegador (ver dados/paciente.ts).
-export default function Entrevista() {
+export default function IdentificacaoPaciente() {
   const { t } = useIdioma()
   const { sessao } = useAuth()
   const e = t.entrevista
-  const [respostas, setRespostas] = useState<Resposta[]>([])
+  const [respostas, setRespostas] = useState<{ passo: PassoId; valor: string }[]>([])
   const [esperando, setEsperando] = useState(false)
   const [texto, setTexto] = useState('')
   const fimRef = useRef<HTMLDivElement>(null)
@@ -69,7 +68,11 @@ export default function Entrevista() {
         <p className="pub-lead">{e.sub}</p>
         <p className="ent-aviso">{e.aviso}</p>
 
-        {!sessao && <IdentificacaoPaciente />}
+        {!sessao && (
+          <p className="ent-aviso" role="status">
+            Faça login para continuar. <a className="saiba-mais" href="#/login/paciente">Entrar</a>
+          </p>
+        )}
         {sessao && !identificado && (
           <p className="ent-aviso" role="status">
             {e.profissionalAviso} <a className="saiba-mais" href="#/painel">{e.voltarPainel}</a>

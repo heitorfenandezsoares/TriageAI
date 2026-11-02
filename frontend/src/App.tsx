@@ -2,6 +2,7 @@ import Home from './paginas/Home'
 import Login from './paginas/Login'
 import AreaProfissional from './paginas/AreaProfissional'
 import AreaPaciente from './paginas/AreaPaciente'
+import Entrevista from './paginas/Entrevista'
 import Triagem from './paginas/Triagem'
 import NaoEncontrada from './paginas/NaoEncontrada'
 import CriarConta from './paginas/CriarConta'
@@ -31,6 +32,13 @@ export default function App() {
     return (
       <RotaProtegida perfis={['paciente']} entrada="paciente">
         <AreaPaciente />
+      </RotaProtegida>
+    )
+  }
+  if (rota === '/entrevista') {
+    return (
+      <RotaProtegida perfis={['paciente']} entrada="paciente">
+        <Entrevista />
       </RotaProtegida>
     )
   }

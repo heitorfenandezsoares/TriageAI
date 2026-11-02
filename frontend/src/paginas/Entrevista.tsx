@@ -1,163 +1,383 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import CabecalhoPublico from '../componentes/CabecalhoPublico'
-import IdentificacaoPaciente from '../componentes/IdentificacaoPaciente'
 import { useAuth } from '../auth/AuthContext'
 import { idPaciente, salvarPreTriagem } from '../dados/paciente'
-import { PASSOS, ehAlerta, temSinalDeAlerta, type Passo, type Resposta } from '../dados/entrevista' 
+import {
+  PERGUNTAS_PADRAO,
+  gerarPerguntaRisco,
+  gerarOrientacaoConforto,
+  determinarUrgenciaERedFlags,
+  gerarTabelaMarkdown,
+  type Resposta,
+} from '../dados/entrevista'
 import { useIdioma } from '../i18n/idioma'
 
-// Pré-triagem guiada para o paciente. Roteiro fixo, sem IA: não classifica o paciente.
-// O paciente se identifica por código (e-mail) e o resumo fica na conta dele; a identidade
-// completa (CPF e documento) é confirmada pela equipe na triagem presencial.
-// TODO: enviar o resumo ao backend em vez de guardá-lo no navegador (ver dados/paciente.ts).
-export default function Entrevista() {
+export interface EntrevistaProps {
+  embutido?: boolean
+  aoConcluir?: () => void
+}
+
+interface Mensagem {
+  id: string
+  autor: 'bot' | 'paciente'
+  texto?: string
+  alerta?: boolean
+  tabela?: {
+    idade: string
+    peso: string
+    sintomas: string
+    redFlags: string
+    urgencia: 'Baixo' | 'Médio' | 'Alto'
+    tabelaMarkdown: string
+  }
+}
+
+type EtapaConversa = 'idade' | 'peso' | 'sintomas' | 'risco' | 'concluido'
+
+export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaProps = {}) {
   const { t } = useIdioma()
   const { sessao } = useAuth()
   const e = t.entrevista
-  const [respostas, setRespostas] = useState<Resposta[]>([])
+
+  const [etapa, setEtapa] = useState<EtapaConversa>('idade')
+  const [mensagens, setMensagens] = useState<Mensagem[]>([
+    {
+      id: 'msg-0',
+      autor: 'bot',
+      texto: PERGUNTAS_PADRAO.idade,
+    },
+  ])
   const [esperando, setEsperando] = useState(false)
-  const [texto, setTexto] = useState('')
+  const [entrada, setEntrada] = useState('')
+  const [copiado, setCopiado] = useState(false)
+
+  // Dados coletados
+  const [idade, setIdade] = useState('')
+  const [peso, setPeso] = useState('')
+  const [sintomas, setSintomas] = useState('')
+
   const fimRef = useRef<HTMLDivElement>(null)
-
-  const terminou = respostas.length === PASSOS.length
-  const passoAtual: Passo | undefined = PASSOS[respostas.length]
-
-  // Pequena pausa antes da próxima pergunta, como numa conversa
-  useEffect(() => {
-    if (!esperando) return
-    const id = setTimeout(() => setEsperando(false), 500)
-    return () => clearTimeout(id)
-  }, [esperando])
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
-  }, [respostas.length, esperando])
+  }, [mensagens.length, esperando])
 
-  const responder = (valor: string) => {
-    if (!passoAtual) return
-    const novas = [...respostas, { passo: passoAtual.id, valor }]
-    setRespostas(novas)
-    setTexto('')
-    if (novas.length < PASSOS.length) setEsperando(true)
-    else if (sessao?.usuario.perfil === 'paciente') salvarPreTriagem(idPaciente(sessao.usuario), novas)
+  useEffect(() => {
+    if (!esperando && etapa !== 'concluido' && etapa !== 'risco') {
+      inputRef.current?.focus()
+    }
+  }, [etapa, esperando])
+
+  const adicionarRespostaPaciente = (textoValor: string) => {
+    setMensagens((prev) => [
+      ...prev,
+      { id: `paciente-${Date.now()}`, autor: 'paciente', texto: textoValor },
+    ])
   }
 
-  const enviarTexto = (ev: FormEvent<HTMLFormElement>) => {
+  const enviarEntradaTexto = (ev: FormEvent<HTMLFormElement>) => {
     ev.preventDefault()
-    if (texto.trim()) responder(texto.trim())
+    const valor = entrada.trim()
+    if (!valor || esperando) return
+
+    setEntrada('')
+
+    if (etapa === 'idade') {
+      setIdade(valor)
+      adicionarRespostaPaciente(valor)
+      setEsperando(true)
+
+      setTimeout(() => {
+        setMensagens((prev) => [
+          ...prev,
+          { id: `bot-${Date.now()}`, autor: 'bot', texto: PERGUNTAS_PADRAO.peso },
+        ])
+        setEtapa('peso')
+        setEsperando(false)
+      }, 500)
+    } else if (etapa === 'peso') {
+      setPeso(valor)
+      adicionarRespostaPaciente(valor)
+      setEsperando(true)
+
+      setTimeout(() => {
+        setMensagens((prev) => [
+          ...prev,
+          { id: `bot-${Date.now()}`, autor: 'bot', texto: PERGUNTAS_PADRAO.sintomas },
+        ])
+        setEtapa('sintomas')
+        setEsperando(false)
+      }, 500)
+    } else if (etapa === 'sintomas') {
+      setSintomas(valor)
+      adicionarRespostaPaciente(valor)
+      setEsperando(true)
+
+      const perguntaRisco = gerarPerguntaRisco(valor)
+
+      setTimeout(() => {
+        setMensagens((prev) => [
+          ...prev,
+          { id: `bot-${Date.now()}`, autor: 'bot', texto: perguntaRisco },
+        ])
+        setEtapa('risco')
+        setEsperando(false)
+      }, 600)
+    }
   }
 
-  const formatar = (passo: Passo, valor: string): string => {
-    if (passo.tipo === 'opcoes') return e.inicioOpcoes[Number(valor)]
-    if (passo.tipo === 'escala') return `${valor}/10`
-    if (passo.tipo === 'simnao') return valor === 'sim' ? e.sim : e.nao
-    return valor
+  const responderRisco = (opcao: 'sim' | 'nao') => {
+    if (esperando || etapa !== 'risco') return
+
+    const respostaTexto = opcao === 'sim' ? 'Sim' : 'Não'
+    adicionarRespostaPaciente(respostaTexto)
+    setEsperando(true)
+
+    const temEmergencia = opcao === 'sim'
+    const { urgencia, redFlags } = determinarUrgenciaERedFlags(sintomas, temEmergencia)
+    const orientacao = temEmergencia
+      ? '⚠️ Atenção: Seus sintomas podem indicar uma situação de emergência que requer avaliação imediata. Por favor, comunique a equipe de enfermagem agora mesmo ou ligue 192 (SAMU).'
+      : gerarOrientacaoConforto(sintomas)
+
+    const encerramento =
+      'Muito obrigado pelas informações. Seus dados foram registrados com sucesso no seu prontuário e o especialista da equipe de saúde assumirá o seu atendimento em breve.'
+
+    const tabelaMd = gerarTabelaMarkdown(idade, peso, sintomas, redFlags, urgencia)
+
+    setTimeout(() => {
+      setMensagens((prev) => [
+        ...prev,
+        { id: `bot-orientacao-${Date.now()}`, autor: 'bot', texto: orientacao, alerta: temEmergencia },
+        { id: `bot-encerramento-${Date.now()}`, autor: 'bot', texto: encerramento },
+        {
+          id: `bot-tabela-${Date.now()}`,
+          autor: 'bot',
+          tabela: {
+            idade,
+            peso,
+            sintomas,
+            redFlags,
+            urgencia,
+            tabelaMarkdown: tabelaMd,
+          },
+        },
+      ])
+
+      // Intercepta de forma oculta e salva no prontuário do paciente / banco
+      if (sessao?.usuario.perfil === 'paciente') {
+        const respostasRegistro: Resposta[] = [
+          { passo: 'idade', valor: idade },
+          { passo: 'peso', valor: peso },
+          { passo: 'sintomas', valor: sintomas },
+          { passo: 'risco', valor: opcao },
+        ]
+
+        salvarPreTriagem(idPaciente(sessao.usuario), respostasRegistro, {
+          idade,
+          peso,
+          queixa: sintomas,
+          alerta: temEmergencia,
+          urgencia,
+          redFlags,
+          tabelaMarkdown: tabelaMd,
+        })
+      }
+
+      setEtapa('concluido')
+      setEsperando(false)
+    }, 700)
   }
 
-  const refazer = () => { setRespostas([]); setEsperando(false); setTexto('') }
-  const alerta = temSinalDeAlerta(respostas)
-  const mostrarPergunta = !terminou && !esperando && passoAtual
+  const reiniciar = () => {
+    setEtapa('idade')
+    setIdade('')
+    setPeso('')
+    setSintomas('')
+    setEntrada('')
+    setMensagens([
+      {
+        id: `msg-${Date.now()}`,
+        autor: 'bot',
+        texto: PERGUNTAS_PADRAO.idade,
+      },
+    ])
+    setEsperando(false)
+  }
 
-  const identificado = sessao?.usuario.perfil === 'paciente'
+  const copiarMarkdown = (md: string) => {
+    navigator.clipboard.writeText(md)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  const conteudoChat = (
+    <div className="ent-chat-wrapper">
+      <div className="ent-chat" role="log" aria-live="polite" aria-label="Pré-triagem virtual">
+        {mensagens.map((m) => (
+          <div key={m.id} className={`ent-linha ${m.autor}`}>
+            {m.texto && (
+              <p className={`bolha ${m.autor === 'bot' ? 'bot' : 'eu'} ${m.alerta ? 'alerta' : ''}`}>
+                {m.texto}
+              </p>
+            )}
+
+            {m.tabela && (
+              <div className="tabela-triagem-container" role="region" aria-label="Tabela de Triagem">
+                <div className="tabela-triagem-header">
+                  <strong>📋 Resumo Clínico de Triagem</strong>
+                  <button
+                    type="button"
+                    className="btn btn-contorno btn-sm"
+                    onClick={() => copiarMarkdown(m.tabela!.tabelaMarkdown)}
+                  >
+                    {copiado ? '✓ Copiado' : 'Copiar Tabela (Markdown)'}
+                  </button>
+                </div>
+                <table className="tabela-triagem">
+                  <thead>
+                    <tr>
+                      <th>Métrica / Dado</th>
+                      <th>Informação Coletada</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Idade</strong></td>
+                      <td>{m.tabela.idade.toLowerCase().includes('ano') ? m.tabela.idade : `${m.tabela.idade} anos`}</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Peso</strong></td>
+                      <td>{m.tabela.peso.toLowerCase().includes('kg') ? m.tabela.peso : `${m.tabela.peso} kg`}</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Queixa Principal</strong></td>
+                      <td>{m.tabela.sintomas}</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Sinais de Alerta (Red Flags)</strong></td>
+                      <td className={m.tabela.redFlags.includes('Sim') ? 'texto-alerta' : ''}>
+                        {m.tabela.redFlags}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>Nível de Urgência</strong></td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            m.tabela.urgencia === 'Alto'
+                              ? 'badge-alerta'
+                              : m.tabela.urgencia === 'Médio'
+                              ? 'badge-info'
+                              : 'badge-sucesso'
+                          }`}
+                        >
+                          {m.tabela.urgencia}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {esperando && (
+          <p className="bolha bot digitando" aria-label="Digitando...">
+            <span />
+            <span />
+            <span />
+          </p>
+        )}
+
+        <div ref={fimRef} />
+      </div>
+
+      {/* Controles de Entrada */}
+      <div className="ent-controles">
+        {!esperando && (etapa === 'idade' || etapa === 'peso' || etapa === 'sintomas') && (
+          <form className="ent-form" onSubmit={enviarEntradaTexto}>
+            <input
+              ref={inputRef}
+              type={etapa === 'idade' || etapa === 'peso' ? 'text' : 'text'}
+              value={entrada}
+              placeholder={
+                etapa === 'idade'
+                  ? 'Ex: 32 anos'
+                  : etapa === 'peso'
+                  ? 'Ex: 70 kg'
+                  : 'Descreva detalhadamente o que está sentindo...'
+              }
+              maxLength={250}
+              required
+              onChange={(ev) => setEntrada(ev.target.value)}
+            />
+            <button type="submit" className="btn btn-cheio">
+              Enviar
+            </button>
+          </form>
+        )}
+
+        {!esperando && etapa === 'risco' && (
+          <div className="ent-opcoes-risco">
+            <button
+              type="button"
+              className="btn btn-cheio btn-perigo"
+              onClick={() => responderRisco('sim')}
+            >
+              Sim, sinto estes sintomas graves
+            </button>
+            <button
+              type="button"
+              className="btn btn-contorno"
+              onClick={() => responderRisco('nao')}
+            >
+              Não, não sinto nenhum destes sintomas
+            </button>
+          </div>
+        )}
+
+        {etapa === 'concluido' && (
+          <div className="ent-acoes-finais">
+            {embutido && aoConcluir ? (
+              <button type="button" className="btn btn-cheio" onClick={aoConcluir}>
+                {e.irArea}
+              </button>
+            ) : (
+              <a className="btn btn-cheio" href="#/paciente">
+                {e.irArea}
+              </a>
+            )}
+            <button type="button" className="btn btn-contorno" onClick={reiniciar}>
+              Refazer Pré-Triagem
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  if (embutido) {
+    return <div className="ent-container-embutido">{conteudoChat}</div>
+  }
 
   return (
     <>
       <CabecalhoPublico />
       <main className="pub-conteudo ent">
-        <a className="ent-voltar" href="#/">← {e.voltar}</a>
-        <h1>{e.titulo}</h1>
-        <p className="pub-lead">{e.sub}</p>
-        <p className="ent-aviso">{e.aviso}</p>
+        <a className="ent-voltar" href="#/paciente">
+          ← Voltar para a área do paciente
+        </a>
+        <h1>Assistente de Pré-Triagem</h1>
+        <p className="pub-lead">
+          Coleta rápida de dados complementares e orientações iniciais para a equipe de saúde.
+        </p>
+        <p className="ent-aviso">
+          {e.aviso}
+        </p>
 
-        {!sessao && <IdentificacaoPaciente />}
-        {sessao && !identificado && (
-          <p className="ent-aviso" role="status">
-            {e.profissionalAviso} <a className="saiba-mais" href="#/painel">{e.voltarPainel}</a>
-          </p>
-        )}
-        {identificado && (<>
-
-        <div className="ent-chat" role="log" aria-live="polite" aria-label={e.titulo}>
-          <p className="bolha bot">{e.boasVindas}</p>
-
-          {respostas.map((r, i) => {
-            const passo = PASSOS[i]
-            return (
-              <div key={r.passo} className="ent-troca">
-                <p className="bolha bot">{e.perguntas[passo.id]}</p>
-                <p className="bolha eu">{formatar(passo, r.valor)}</p>
-                {ehAlerta(passo, r.valor) && <p className="bolha alerta" role="alert">{e.alerta}</p>}
-              </div>
-            )
-          })}
-
-          {esperando && <p className="bolha bot digitando" aria-label={e.digitando}><span /><span /><span /></p>}
-          {mostrarPergunta && (
-            <p className="bolha bot">
-              <span className="ent-progresso">{e.progresso.replace('{n}', String(respostas.length + 1)).replace('{total}', String(PASSOS.length))}</span>
-              {e.perguntas[passoAtual.id]}
-            </p>
-          )}
-
-          {terminou && (
-            <section className="ent-resumo" aria-labelledby="h-resumo">
-              <h2 id="h-resumo">{e.resumoTitulo}</h2>
-              <p>{e.resumoSub}</p>
-              <dl>
-                {respostas.map((r, i) => (
-                  <div key={r.passo}>
-                    <dt>{e.rotulos[r.passo]}</dt>
-                    <dd>{formatar(PASSOS[i], r.valor)}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className={alerta ? 'ent-status alerta' : 'ent-status'}>{alerta ? e.comAlerta : e.semAlerta}</p>
-              <p>{e.salvo} {e.confirmaHospital}</p>
-              <div className="ent-acoes">
-                <a className="btn btn-cheio" href="#/paciente">{e.irArea}</a>
-                <button type="button" className="btn btn-contorno" onClick={refazer}>{e.recomecar}</button>
-              </div>
-            </section>
-          )}
-          <div ref={fimRef} />
-        </div>
-
-        {mostrarPergunta && (
-          <div className="ent-controles">
-            {passoAtual.tipo === 'texto' && (
-              <form className="ent-form" onSubmit={enviarTexto}>
-                <input type="text" value={texto} maxLength={200} autoFocus required
-                  aria-label={e.perguntas[passoAtual.id]} placeholder={e.placeholder}
-                  onChange={(ev) => setTexto(ev.target.value)} />
-                <button type="submit" className="btn btn-cheio">{e.enviar}</button>
-              </form>
-            )}
-            {passoAtual.tipo === 'opcoes' && (
-              <div className="ent-opcoes">
-                {e.inicioOpcoes.map((o, i) => (
-                  <button key={o} type="button" className="btn btn-contorno" onClick={() => responder(String(i))}>{o}</button>
-                ))}
-              </div>
-            )}
-            {passoAtual.tipo === 'escala' && (
-              <>
-                <p className="ent-escala-rotulo">{e.escalaRotulo}</p>
-                <div className="ent-escala">
-                  {Array.from({ length: 11 }, (_, n) => (
-                    <button key={n} type="button" className="btn btn-contorno" onClick={() => responder(String(n))}>{n}</button>
-                  ))}
-                </div>
-              </>
-            )}
-            {passoAtual.tipo === 'simnao' && (
-              <div className="ent-opcoes">
-                <button type="button" className="btn btn-contorno" onClick={() => responder('sim')}>{e.sim}</button>
-                <button type="button" className="btn btn-contorno" onClick={() => responder('nao')}>{e.nao}</button>
-              </div>
-            )}
-          </div>
-        )}
-        </>)}
+        {conteudoChat}
       </main>
     </>
   )

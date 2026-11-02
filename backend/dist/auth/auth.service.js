@@ -19,12 +19,20 @@ let AuthService = class AuthService {
         this.jwtService = jwtService;
     }
     async signIn(email, pass) {
+        const prof = await this.usersService.findOneProfessional(email);
+        if (prof && (await bcrypt.compare(pass, prof.senhaHash))) {
+            const payload = { sub: prof.id, email: prof.email, perfil: prof.perfil, nome: prof.nome };
+            return {
+                access_token: await this.jwtService.signAsync(payload),
+                usuario: { nome: prof.nome, perfil: prof.perfil },
+            };
+        }
         const user = await this.usersService.findOne(email);
-        if (user && await bcrypt.compare(pass, user.senhaHash)) {
+        if (user && (await bcrypt.compare(pass, user.senhaHash))) {
             const payload = { sub: user.id, email: user.email, perfil: user.perfil, nome: user.nome };
             return {
                 access_token: await this.jwtService.signAsync(payload),
-                usuario: { nome: user.nome, perfil: user.perfil }
+                usuario: { nome: user.nome, perfil: user.perfil },
             };
         }
         throw new UnauthorizedException('Credenciais inválidas');
@@ -40,7 +48,7 @@ let AuthService = class AuthService {
             email: dados.id,
             senhaHash,
             nome: dados.nome,
-            perfil: 'paciente'
+            perfil: 'paciente',
         });
         return { message: 'Conta criada com sucesso!' };
     }

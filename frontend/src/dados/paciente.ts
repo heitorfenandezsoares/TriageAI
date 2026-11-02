@@ -13,6 +13,11 @@ export interface PreTriagem {
   queixa: string
   alerta: boolean
   respostas: Resposta[]
+  idade?: string
+  peso?: string
+  urgencia?: 'Baixo' | 'Médio' | 'Alto'
+  redFlags?: string
+  tabelaMarkdown?: string
 }
 
 export interface DadosPaciente {
@@ -41,14 +46,33 @@ function gravar(id: string, dados: DadosPaciente): DadosPaciente {
   return dados
 }
 
-export function salvarPreTriagem(id: string, respostas: Resposta[]): DadosPaciente {
+export function salvarPreTriagem(
+  id: string,
+  respostas: Resposta[],
+  complemento?: {
+    idade?: string
+    peso?: string
+    queixa?: string
+    alerta?: boolean
+    urgencia?: 'Baixo' | 'Médio' | 'Alto'
+    redFlags?: string
+    tabelaMarkdown?: string
+  }
+): DadosPaciente {
   const atual = carregarPaciente(id)
+  const queixa = complemento?.queixa ?? respostas.find((r) => r.passo === 'sintomas' || r.passo === 'queixa')?.valor ?? ''
+  const alerta = complemento?.alerta !== undefined ? complemento.alerta : temSinalDeAlerta(respostas)
   const nova: PreTriagem = {
     id: crypto.randomUUID(),
     criadaEm: Date.now(),
-    queixa: respostas.find((r) => r.passo === 'queixa')?.valor ?? '',
-    alerta: temSinalDeAlerta(respostas),
+    queixa,
+    alerta,
     respostas,
+    idade: complemento?.idade,
+    peso: complemento?.peso,
+    urgencia: complemento?.urgencia,
+    redFlags: complemento?.redFlags,
+    tabelaMarkdown: complemento?.tabelaMarkdown,
   }
   return gravar(id, {
     ...atual,

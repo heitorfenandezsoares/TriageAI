@@ -14,10 +14,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity.js';
+import { UserProfessional } from './user-professional.entity.js';
 let UsersService = class UsersService {
     usersRepository;
-    constructor(usersRepository) {
+    professionalsRepository;
+    constructor(usersRepository, professionalsRepository) {
         this.usersRepository = usersRepository;
+        this.professionalsRepository = professionalsRepository;
     }
     async findOne(email) {
         return this.usersRepository.findOne({ where: { email } });
@@ -26,11 +29,20 @@ let UsersService = class UsersService {
         const user = this.usersRepository.create(userDto);
         return this.usersRepository.save(user);
     }
+    async findOneProfessional(email) {
+        return this.professionalsRepository.findOne({ where: { email } });
+    }
+    async createProfessional(profDto) {
+        const prof = this.professionalsRepository.create(profDto);
+        return this.professionalsRepository.save(prof);
+    }
 };
 UsersService = __decorate([
     Injectable(),
     __param(0, InjectRepository(User)),
-    __metadata("design:paramtypes", [Repository])
+    __param(1, InjectRepository(UserProfessional)),
+    __metadata("design:paramtypes", [Repository,
+        Repository])
 ], UsersService);
 export { UsersService };
 //# sourceMappingURL=users.service.js.map
