@@ -81,6 +81,25 @@ export function salvarPreTriagem(
   })
 }
 
+export function carregarTodasPreTriagens(): PreTriagem[] {
+  const lista: PreTriagem[] = []
+  try {
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i)
+      if (k?.startsWith('triageai:paciente:')) {
+        const item = sessionStorage.getItem(k)
+        if (item) {
+          const parsed = JSON.parse(item) as DadosPaciente
+          if (parsed?.preTriagens?.length) {
+            lista.push(...parsed.preTriagens)
+          }
+        }
+      }
+    }
+  } catch { /* ignora */ }
+  return lista.sort((a, b) => b.criadaEm - a.criadaEm)
+}
+
 // Só para a demonstração: simula o que a equipe do hospital faria.
 export function simularEtapa(id: string, etapa: EtapaAtendimento): DadosPaciente {
   const atual = carregarPaciente(id)

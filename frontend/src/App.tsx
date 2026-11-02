@@ -21,7 +21,7 @@ export default function App() {
   if (rota.startsWith('/login')) {
     return <Login modo={rota.endsWith('profissional') ? 'profissional' : 'paciente'} />
   }
-  if (rota === '/painel') {
+  if (rota === '/painel' || rota === '/profissional') {
     return (
       <RotaProtegida perfis={PERFIS_PROFISSIONAIS} entrada="profissional">
         <AreaProfissional />

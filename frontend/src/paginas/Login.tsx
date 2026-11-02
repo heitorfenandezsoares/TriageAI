@@ -5,7 +5,7 @@ import { Olho, OlhoRiscado, Cadeado } from '../componentes/icones'
 import LayoutAuth from '../componentes/LayoutAuth'
 import { useAuth } from '../auth/AuthContext'
 import { CODIGO_MOCK, entrar, verificarCodigo } from '../auth/servicoAuth'
-import { guardarToken } from '../api'
+import { guardarToken, limparToken } from '../api'
 import type { Usuario } from '../auth/tipos'
 import { navegar } from '../rotas/rota'
 
@@ -13,7 +13,7 @@ const EMAIL = /\S+@\S+\.\S+/
 
 function Pagina({ modo }: { modo: Modo }) {
   const { t } = useIdioma()
-  const { sessao, iniciarSessao } = useAuth()
+  const { sessao, iniciarSessao, sair } = useAuth()
   const l = t.login
   const m = l[modo]
 
@@ -26,16 +26,42 @@ function Pagina({ modo }: { modo: Modo }) {
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(false)
 
-  // Quem já está autenticado vai direto para a sua área
+  // Verifica se o usuário já está autenticado em perfil oposto ao modo acessado
+  const sessaoDiferente =
+    sessao &&
+    ((modo === 'profissional' && sessao.usuario.perfil === 'paciente') ||
+      (modo === 'paciente' && sessao.usuario.perfil !== 'paciente'))
+
+  // Só redireciona se a sessão corresponder exatamente ao modo atual
   useEffect(() => {
-    if (sessao) navegar(sessao.usuario.perfil === 'paciente' ? '/paciente' : '/painel')
-  }, [sessao])
+    if (!sessao) return
+    const ehPaciente = sessao.usuario.perfil === 'paciente'
+    if (modo === 'paciente' && ehPaciente) {
+      navegar('/paciente')
+    } else if (modo === 'profissional' && !ehPaciente) {
+      navegar('/painel')
+    }
+  }, [sessao, modo])
+
+  const trocarDeConta = () => {
+    limparToken()
+    sair()
+    setErro(null)
+    setId('')
+    setSenha('')
+  }
 
   const enviarCredenciais = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErro(null)
     if (!id.trim() || !senha.trim()) return setErro(l.erroCampos)
     if (modo === 'paciente' && !EMAIL.test(id.trim())) return setErro(l.erroEmail)
+
+    // Se havia sessão ativa do outro modo, limpa para não conflitar
+    if (sessaoDiferente) {
+      limparToken()
+      sair()
+    }
 
     setCarregando(true)
     try {
@@ -111,6 +137,27 @@ function Pagina({ modo }: { modo: Modo }) {
         </form>
       ) : (
         <form className="lg-card" onSubmit={enviarCredenciais} noValidate>
+          {sessaoDiferente && (
+            <div className="lg-alerta-sessao" role="status">
+              <p>
+                ℹ️ Você já está conectado como <strong>{sessao.usuario.nome}</strong> (
+                {sessao.usuario.perfil === 'paciente' ? 'Paciente' : 'Profissional'}).
+              </p>
+              <div className="lg-alerta-acoes">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-contorno"
+                  onClick={() => navegar(sessao.usuario.perfil === 'paciente' ? '/paciente' : '/painel')}
+                >
+                  {sessao.usuario.perfil === 'paciente' ? 'Ir para Área do Paciente' : 'Ir para Painel Profissional'} →
+                </button>
+                <button type="button" className="btn btn-sm btn-cheio" onClick={trocarDeConta}>
+                  Desconectar para trocar conta
+                </button>
+              </div>
+            </div>
+          )}
+
           <label className="lg-campo">
             <span className="lg-rotulo">{m.campo}</span>
             <input type={modo === 'paciente' ? 'email' : 'text'} name="usuario" autoComplete="username" required

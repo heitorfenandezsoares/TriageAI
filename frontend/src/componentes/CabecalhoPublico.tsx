@@ -1,9 +1,11 @@
+import { useAuth } from '../auth/AuthContext'
 import { useIdioma } from '../i18n/idioma'
 import { IDIOMAS, type Idioma } from '../i18n/textos'
 
 // Cabeçalho das páginas públicas: início, sobre nós e entrevista.
 export default function CabecalhoPublico() {
   const { lang, setLang, t } = useIdioma()
+  const { sessao, sair } = useAuth()
   return (
     <header className="topo">
       <a className="logo" href="#/">TriageAi</a>
@@ -16,8 +18,21 @@ export default function CabecalhoPublico() {
         </select>
       </nav>
       <div className="acoes">
-        <a className="btn btn-cheio" href="#/login/paciente">{t.nav.paciente}</a>
-        <a className="btn btn-contorno" href="#/login/profissional">{t.nav.profissional}</a>
+        {sessao ? (
+          <>
+            {sessao.usuario.perfil === 'paciente' ? (
+              <a className="btn btn-cheio" href="#/paciente">Área do Paciente ({sessao.usuario.nome.split(' ')[0]})</a>
+            ) : (
+              <a className="btn btn-cheio" href="#/painel">Painel Profissional ({sessao.usuario.nome.split(' ')[0]})</a>
+            )}
+            <button type="button" className="btn btn-contorno" onClick={sair}>{t.area.sair}</button>
+          </>
+        ) : (
+          <>
+            <a className="btn btn-cheio" href="#/login/paciente">{t.nav.paciente}</a>
+            <a className="btn btn-contorno" href="#/login/profissional">{t.nav.profissional}</a>
+          </>
+        )}
       </div>
     </header>
   )
