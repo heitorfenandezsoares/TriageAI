@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import CabecalhoPublico from '../componentes/CabecalhoPublico'
+import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
 import { useAuth } from '../auth/AuthContext'
 import { idPaciente, salvarPreTriagem } from '../dados/paciente'
 import {
@@ -39,6 +40,7 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
   const { sessao } = useAuth()
   const e = t.entrevista
 
+  const [modalidade, setModalidade] = useState<'chat' | 'video'>('chat')
   const [etapa, setEtapa] = useState<EtapaConversa>('idade')
   const [mensagens, setMensagens] = useState<Mensagem[]>([
     {
@@ -358,8 +360,45 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
     </div>
   )
 
+  const idSala = sessao ? idPaciente(sessao.usuario) : 'Atendimento'
+
+  const seletorModalidade = (
+    <div className="ent-seletor-modalidade">
+      <button
+        type="button"
+        className={`btn-modalidade ${modalidade === 'chat' ? 'ativo' : ''}`}
+        onClick={() => setModalidade('chat')}
+      >
+        💬 Assistente Virtual (Chat Guiado)
+      </button>
+      <button
+        type="button"
+        className={`btn-modalidade ${modalidade === 'video' ? 'ativo' : ''}`}
+        onClick={() => setModalidade('video')}
+      >
+        📹 Entrevista por Vídeo ao Vivo
+      </button>
+    </div>
+  )
+
+  const conteudoPrincipal = modalidade === 'video' ? (
+    <SalaVideoTriagem
+      idSala={idSala}
+      nomeUsuario={sessao?.usuario.nome ?? 'Paciente'}
+      papel="paciente"
+      aoEncerrar={() => setModalidade('chat')}
+    />
+  ) : (
+    conteudoChat
+  )
+
   if (embutido) {
-    return <div className="ent-container-embutido">{conteudoChat}</div>
+    return (
+      <div className="ent-container-embutido">
+        {seletorModalidade}
+        {conteudoPrincipal}
+      </div>
+    )
   }
 
   return (
@@ -377,7 +416,8 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
           {e.aviso}
         </p>
 
-        {conteudoChat}
+        {seletorModalidade}
+        {conteudoPrincipal}
       </main>
     </>
   )

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
+import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
 import FilaAtendimento from '../componentes/dashboard/FilaAtendimento'
 import MapaLeitos from '../componentes/dashboard/MapaLeitos'
 import Indicadores from '../componentes/dashboard/Indicadores'
@@ -18,6 +19,7 @@ export default function AreaProfissional() {
   const [abaAtiva, setAbaAtiva] = useState<AbaProfissional>('visaoGeral')
   const [preTriagens, setPreTriagens] = useState<PreTriagem[]>(() => carregarTodasPreTriagens())
   const [preTriagemSelecionada, setPreTriagemSelecionada] = useState<PreTriagem | null>(null)
+  const [chamadaAtiva, setChamadaAtiva] = useState<{ idSala: string; nomePaciente: string } | null>(null)
 
   const modulos: readonly string[] = sessao ? MODULOS_POR_PERFIL[sessao.usuario.perfil] : []
   const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
@@ -241,7 +243,19 @@ export default function AreaProfissional() {
                     )}
 
                     <div className="prof-detalhe-acoes">
-                      <a className="btn btn-cheio" href="#/triagem">
+                      <button
+                        type="button"
+                        className="btn btn-cheio"
+                        onClick={() =>
+                          setChamadaAtiva({
+                            idSala: preTriagemSelecionada.id,
+                            nomePaciente: preTriagemSelecionada.queixa.slice(0, 20) || 'Paciente',
+                          })
+                        }
+                      >
+                        📹 Entrar na Sala de Vídeo com o Paciente
+                      </button>
+                      <a className="btn btn-contorno" href="#/triagem">
                         🩺 Iniciar Triagem Presencial com Manchester
                       </a>
                     </div>
@@ -250,6 +264,20 @@ export default function AreaProfissional() {
               </div>
             )}
           </section>
+        )}
+
+        {/* Modal de Chamada de Vídeo para o Profissional */}
+        {chamadaAtiva && (
+          <div className="video-modal-overlay">
+            <div className="video-modal-conteudo">
+              <SalaVideoTriagem
+                idSala={chamadaAtiva.idSala}
+                nomeUsuario={sessao.usuario.nome}
+                papel="profissional"
+                aoEncerrar={() => setChamadaAtiva(null)}
+              />
+            </div>
+          </div>
         )}
 
         {/* 3. MAPA DE LEITOS EXPANDIDO */}
