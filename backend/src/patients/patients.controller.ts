@@ -52,6 +52,11 @@ export class PatientsController {
     return this.patientsService.chamarProximo();
   }
 
+  @Delete('limpar-fila')
+  removeAll() {
+    return this.patientsService.removeAll();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.patientsService.findOne(+id);

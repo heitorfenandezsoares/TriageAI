@@ -44,6 +44,9 @@ let PatientsController = class PatientsController {
     chamarProximo() {
         return this.patientsService.chamarProximo();
     }
+    removeAll() {
+        return this.patientsService.removeAll();
+    }
     findOne(id) {
         return this.patientsService.findOne(+id);
     }
@@ -113,6 +116,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "chamarProximo", null);
+__decorate([
+    Delete('limpar-fila'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "removeAll", null);
 __decorate([
     Get(':id'),
     __param(0, Param('id')),

@@ -15,6 +15,7 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
   const [pacienteChamado, setPacienteChamado] = useState<PacienteFila | null>(null)
   const [modalAdmitir, setModalAdmitir] = useState(false)
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null)
+  const [idsRemovidos, setIdsRemovidos] = useState<Set<number>>(new Set())
 
   // Form de admissão rápida
   const [novoIni, setNovoIni] = useState('')
@@ -22,7 +23,8 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
   const [novaQueixa, setNovaQueixa] = useState('0')
   const [novoNivel, setNovoNivel] = useState<NivelManchester>('verde')
 
-  const ordenada = [...fila].sort((a, b) => ORDEM_NIVEL[a.nivel] - ORDEM_NIVEL[b.nivel] || b.espera - a.espera)
+  const filaVisivel = fila.filter((p) => !idsRemovidos.has(p.id))
+  const ordenada = [...filaVisivel].sort((a, b) => ORDEM_NIVEL[a.nivel] - ORDEM_NIVEL[b.nivel] || b.espera - a.espera)
 
   // Toca um sinal sonoro de chamada de painel hospitalar via Web Audio API
   const tocarSinalChamada = () => {
@@ -61,16 +63,42 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
     }
   }
 
-  // Finalizar atendimento / dar alta da fila
+  // Finalizar atendimento / remover da fila
   const concluirAtendimento = async (id: number) => {
+    setIdsRemovidos((prev) => new Set(prev).add(id))
+    if (pacienteChamado?.id === id) setPacienteChamado(null)
+    setMensagemSucesso('Paciente removido / atendimento concluído!')
+    setTimeout(() => setMensagemSucesso(null), 3000)
+
     try {
       await apiFetch(`/patients/${id}`, { method: 'DELETE' })
-      setMensagemSucesso('Atendimento concluído com sucesso!')
-      setTimeout(() => setMensagemSucesso(null), 3000)
-      if (pacienteChamado?.id === id) setPacienteChamado(null)
+      window.dispatchEvent(new CustomEvent('triageai:fila-atualizada'))
       onAtualizar?.()
     } catch {
       // Tratamento silencioso
+    }
+  }
+
+  // Limpar toda a fila de atendimento
+  const limparFilaCompleta = async () => {
+    const idsAtuais = ordenada.map((p) => p.id)
+    setIdsRemovidos((prev) => {
+      const novo = new Set(prev)
+      idsAtuais.forEach((id) => novo.add(id))
+      return novo
+    })
+    setPacienteChamado(null)
+    setMensagemSucesso('Fila de atendimento limpa com sucesso!')
+    setTimeout(() => setMensagemSucesso(null), 3000)
+
+    try {
+      await apiFetch('/patients/limpar-fila', { method: 'DELETE' }).catch(async () => {
+        await Promise.all(idsAtuais.map((id) => apiFetch(`/patients/${id}`, { method: 'DELETE' })))
+      })
+      window.dispatchEvent(new CustomEvent('triageai:fila-atualizada'))
+      onAtualizar?.()
+    } catch {
+      // Ignora erro
     }
   }
 
@@ -100,6 +128,7 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
       setModalAdmitir(false)
       setMensagemSucesso('Paciente inserido na fila de atendimento!')
       setTimeout(() => setMensagemSucesso(null), 3000)
+      window.dispatchEvent(new CustomEvent('triageai:fila-atualizada'))
       onAtualizar?.()
     } catch {
       alert('Não foi possível conectar ao servidor para admitir o paciente.')
@@ -108,7 +137,7 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
 
   return (
     <section className="db-bloco" aria-labelledby="h-fila">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
         <div>
           <h2 id="h-fila" style={{ margin: 0 }}>{d.fila.titulo}</h2>
           <span style={{ fontSize: '0.85rem', color: '#556980' }}>
@@ -116,7 +145,7 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-cheio btn-sm"
@@ -133,6 +162,17 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
           >
             + Admitir
           </button>
+          {ordenada.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-contorno btn-sm"
+              style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+              onClick={limparFilaCompleta}
+              title="Remover todos os pacientes da fila"
+            >
+              🗑️ Limpar Fila
+            </button>
+          )}
         </div>
       </div>
 
@@ -301,6 +341,15 @@ export default function FilaAtendimento({ fila, onAtualizar }: FilaProps) {
                     title="Concluir atendimento"
                   >
                     ✓ Atendido
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-contorno btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '0.75rem', color: '#dc2626', borderColor: '#fca5a5' }}
+                    onClick={() => concluirAtendimento(p.id)}
+                    title="Remover paciente da fila"
+                  >
+                    🗑️
                   </button>
                 </div>
               </li>

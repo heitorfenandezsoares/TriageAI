@@ -1,17 +1,18 @@
-import { OnModuleInit } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Patient } from './patient.entity.js';
 import { PreTriage } from './pre-triage.entity.js';
-export declare class PatientsService implements OnModuleInit {
+export declare class PatientsService {
     private patientRepo;
     private preTriageRepo;
     constructor(patientRepo: Repository<Patient>, preTriageRepo: Repository<PreTriage>);
-    onModuleInit(): Promise<void>;
     create(createPatientDto: Partial<Patient>): Promise<Patient>;
     findAll(): Promise<Patient[]>;
     findOne(id: number): Promise<Patient | null>;
     update(id: number, updatePatientDto: Partial<Patient>): Promise<Patient | null>;
     remove(id: number): Promise<{
+        success: boolean;
+    }>;
+    removeAll(): Promise<{
         success: boolean;
     }>;
     chamarProximo(): Promise<{

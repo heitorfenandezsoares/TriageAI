@@ -29,6 +29,9 @@ export declare class PatientsController {
         mensagem: string;
         chamadoEm: string;
     } | null>;
+    removeAll(): Promise<{
+        success: boolean;
+    }>;
     findOne(id: string): Promise<import("./patient.entity.js").Patient | null>;
     update(id: string, updatePatientDto: any): Promise<import("./patient.entity.js").Patient | null>;
     remove(id: string): Promise<{

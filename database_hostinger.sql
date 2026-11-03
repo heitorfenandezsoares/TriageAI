@@ -78,16 +78,6 @@ INSERT INTO `users` (`email`, `senhaHash`, `nome`, `perfil`) VALUES
 ('recepcao@triageai.com', '$2b$10$VQ5QABLgQJp7hl6go07kzO3/6LS3G.XSmJxTKAM3CQth9MDqYM3Ji', 'Carlos Atendente', 'recepcionista')
 ON DUPLICATE KEY UPDATE `senhaHash` = VALUES(`senhaHash`), `nome` = VALUES(`nome`), `perfil` = VALUES(`perfil`);
 
--- Pacientes na fila inicial de triagem Manchester
-INSERT INTO `patients` (`id`, `ini`, `idade`, `q`, `nivel`, `espera`, `risco`) VALUES
-(1, 'M.S.', 34, 0, 'azul', 95, 0.05),
-(2, 'L.F.', 27, 1, 'verde', 48, 0.12),
-(3, 'C.R.', 45, 2, 'amarelo', 35, 0.45),
-(4, 'J.P.', 61, 3, 'laranja', 6, 0.78),
-(5, 'A.T.', 19, 4, 'verde', 22, 0.08),
-(6, 'B.N.', 72, 6, 'amarelo', 70, 0.72)
-ON DUPLICATE KEY UPDATE `ini` = VALUES(`ini`);
-
 -- Mapa de Leitos Inicial (Enfermaria: E1 a E12, UTI: U1 a U6, Observação: O1 a O8)
 INSERT INTO `beds` (`id`, `setor`, `status`) VALUES
 ('E1', 'enfermaria', 'ocupado'),

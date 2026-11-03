@@ -22,19 +22,6 @@ let PatientsService = class PatientsService {
         this.patientRepo = patientRepo;
         this.preTriageRepo = preTriageRepo;
     }
-    async onModuleInit() {
-        const total = await this.patientRepo.count();
-        if (total === 0) {
-            await this.patientRepo.save([
-                { ini: 'M.S.', idade: 34, q: 0, nivel: 'azul', espera: 95, risco: 0.05 },
-                { ini: 'L.F.', idade: 27, q: 1, nivel: 'verde', espera: 48, risco: 0.12 },
-                { ini: 'C.R.', idade: 45, q: 2, nivel: 'amarelo', espera: 35, risco: 0.45 },
-                { ini: 'J.P.', idade: 61, q: 3, nivel: 'laranja', espera: 6, risco: 0.78 },
-                { ini: 'A.T.', idade: 19, q: 4, nivel: 'verde', espera: 22, risco: 0.08 },
-                { ini: 'B.N.', idade: 72, q: 6, nivel: 'amarelo', espera: 70, risco: 0.72 },
-            ]);
-        }
-    }
     async create(createPatientDto) {
         const patient = this.patientRepo.create({
             espera: 0,
@@ -57,6 +44,10 @@ let PatientsService = class PatientsService {
     }
     async remove(id) {
         await this.patientRepo.delete(id);
+        return { success: true };
+    }
+    async removeAll() {
+        await this.patientRepo.clear();
         return { success: true };
     }
     async chamarProximo() {
