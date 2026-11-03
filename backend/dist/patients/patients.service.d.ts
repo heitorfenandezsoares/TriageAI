@@ -33,4 +33,10 @@ export declare class PatientsService implements OnModuleInit {
         } & Patient;
         preTriage: PreTriage;
     }>;
+    removePreTriage(id: string): Promise<{
+        success: boolean;
+    }>;
+    removeAllPreTriages(): Promise<{
+        success: boolean;
+    }>;
 }

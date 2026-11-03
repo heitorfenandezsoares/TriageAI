@@ -8,7 +8,13 @@ import Alertas from '../componentes/dashboard/Alertas'
 import { useAuth } from '../auth/AuthContext'
 import { MODULOS_POR_PERFIL } from '../auth/permissoes'
 import { useDadosTempoReal } from '../dados/useDadosTempoReal'
-import { carregarTodasPreTriagens, carregarTodasPreTriagensAsync, type PreTriagem } from '../dados/paciente'
+import {
+  carregarTodasPreTriagens,
+  carregarTodasPreTriagensAsync,
+  removerPreTriagem,
+  limparTodasPreTriagens,
+  type PreTriagem,
+} from '../dados/paciente'
 import { apiFetch } from '../api'
 import { useIdioma } from '../i18n/idioma'
 
@@ -47,6 +53,22 @@ export default function AreaProfissional() {
     } catch {
       alert('Não foi possível admitir o paciente na fila. Verifique a conexão com o servidor.')
     }
+  }
+
+  const excluirProntuario = async (id: string, ev?: React.MouseEvent) => {
+    ev?.stopPropagation()
+    setPreTriagens((prev) => prev.filter((p) => p.id !== id))
+    if (preTriagemSelecionada?.id === id) {
+      setPreTriagemSelecionada(null)
+    }
+    await removerPreTriagem(id)
+  }
+
+  const excluirTodosProntuarios = async () => {
+    const ids = preTriagens.map((p) => p.id)
+    setPreTriagens([])
+    setPreTriagemSelecionada(null)
+    await limparTodasPreTriagens(ids)
   }
 
   if (!sessao) return null
@@ -161,9 +183,22 @@ export default function AreaProfissional() {
                   Casos preenchidos pelos pacientes via aplicativo ou totem antes do atendimento presencial.
                 </p>
               </div>
-              <button type="button" className="btn btn-contorno btn-sm" onClick={atualizarPreTriagens}>
-                🔄 Atualizar Lista
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-contorno btn-sm" onClick={atualizarPreTriagens}>
+                  🔄 Atualizar Lista
+                </button>
+                {preTriagens.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-contorno btn-sm"
+                    style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                    onClick={excluirTodosProntuarios}
+                    title="Remover todos os prontuários da lista"
+                  >
+                    🗑️ Limpar Todos
+                  </button>
+                )}
+              </div>
             </div>
 
             {preTriagens.length === 0 ? (
@@ -177,6 +212,7 @@ export default function AreaProfissional() {
                   {preTriagens.map((pt) => {
                     const dataHora = new Date(pt.criadaEm).toLocaleString(lang === 'pt' ? 'pt-BR' : lang)
                     const selecionado = preTriagemSelecionada?.id === pt.id
+                    const semAlertaGrave = !pt.alerta && (!pt.redFlags || pt.redFlags.startsWith('Não') || pt.redFlags.startsWith('Nenhum'))
                     return (
                       <div
                         key={pt.id}
@@ -184,9 +220,16 @@ export default function AreaProfissional() {
                         onClick={() => setPreTriagemSelecionada(pt)}
                       >
                         <div className="prof-card-topo">
-                          <span className={`badge ${pt.urgencia === 'Alto' || pt.alerta ? 'badge-alerta' : pt.urgencia === 'Médio' ? 'badge-info' : 'badge-sucesso'}`}>
-                            {pt.urgencia ? `Urgência ${pt.urgencia}` : (pt.alerta ? '⚠️ Alerta' : '✓ Normal')}
-                          </span>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span className={`badge ${pt.urgencia === 'Alto' || pt.alerta ? 'badge-alerta' : pt.urgencia === 'Médio' ? 'badge-info' : 'badge-sucesso'}`}>
+                              {pt.urgencia ? `Urgência ${pt.urgencia}` : (pt.alerta ? '⚠️ Alerta' : '✓ Normal')}
+                            </span>
+                            {pt.status === 'em_fila' && (
+                              <span className="badge badge-sucesso" style={{ fontSize: '0.72rem' }}>
+                                ✓ Na Fila
+                              </span>
+                            )}
+                          </div>
                           <time>{dataHora}</time>
                         </div>
                         <h3 className="prof-card-queixa">{pt.queixa || 'Sintomas não informados'}</h3>
@@ -195,13 +238,30 @@ export default function AreaProfissional() {
                           {pt.peso && <span>Peso: <strong>{pt.peso}</strong></span>}
                         </div>
                         {pt.redFlags && (
-                          <p className="prof-card-redflags">
-                            🚩 {pt.redFlags}
-                          </p>
+                          semAlertaGrave ? (
+                            <p style={{ margin: '8px 0 0', padding: '6px 10px', borderRadius: '6px', background: '#f0fdf4', color: '#15803d', fontSize: '0.82rem' }}>
+                              ✓ Sem sinais de alerta críticos ({pt.redFlags})
+                            </p>
+                          ) : (
+                            <p className="prof-card-redflags">
+                              🚩 {pt.redFlags}
+                            </p>
+                          )
                         )}
-                        <button type="button" className="btn btn-contorno btn-sm" style={{ marginTop: '8px' }}>
-                          Ver Prontuário Completo →
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                          <button type="button" className="btn btn-contorno btn-sm" style={{ flex: 1 }}>
+                            Ver Prontuário Completo →
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-contorno btn-sm"
+                            style={{ color: '#dc2626', borderColor: '#fca5a5', padding: '6px 10px' }}
+                            onClick={(ev) => excluirProntuario(pt.id, ev)}
+                            title="Remover este prontuário"
+                          >
+                            🗑️ Remover
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
@@ -212,13 +272,24 @@ export default function AreaProfissional() {
                   <div className="prof-detalhe-pt">
                     <div className="prof-detalhe-header">
                       <h3>Detalhes Clínicos do Paciente</h3>
-                      <button
-                        type="button"
-                        className="btn btn-contorno btn-sm"
-                        onClick={() => setPreTriagemSelecionada(null)}
-                      >
-                        ✕ Fechar
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          className="btn btn-contorno btn-sm"
+                          style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                          onClick={() => excluirProntuario(preTriagemSelecionada.id)}
+                          title="Excluir este prontuário permanentemente"
+                        >
+                          🗑️ Remover Prontuário
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-contorno btn-sm"
+                          onClick={() => setPreTriagemSelecionada(null)}
+                        >
+                          ✕ Fechar
+                        </button>
+                      </div>
                     </div>
 
                     <table className="tabela-triagem">
@@ -263,7 +334,7 @@ export default function AreaProfissional() {
                       </div>
                     )}
 
-                    <div className="prof-detalhe-acoes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <div className="prof-detalhe-acoes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                       {preTriagemSelecionada.status === 'em_fila' ? (
                         <span className="badge badge-sucesso" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
                           ✓ Paciente já admitido na Fila Ativa
@@ -294,6 +365,14 @@ export default function AreaProfissional() {
                       <a className="btn btn-contorno" href="#/triagem">
                         🩺 Iniciar Manchester Presencial
                       </a>
+                      <button
+                        type="button"
+                        className="btn btn-contorno"
+                        style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                        onClick={() => excluirProntuario(preTriagemSelecionada.id)}
+                      >
+                        🗑️ Excluir Prontuário
+                      </button>
                     </div>
                   </div>
                 )}

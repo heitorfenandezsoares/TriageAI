@@ -151,4 +151,14 @@ export class PatientsService implements OnModuleInit {
 
     return { patient, preTriage: pt };
   }
+
+  async removePreTriage(id: string) {
+    await this.preTriageRepo.delete(id);
+    return { success: true };
+  }
+
+  async removeAllPreTriages() {
+    await this.preTriageRepo.clear();
+    return { success: true };
+  }
 }

@@ -137,6 +137,14 @@ let PatientsService = class PatientsService {
         await this.preTriageRepo.save(pt);
         return { patient, preTriage: pt };
     }
+    async removePreTriage(id) {
+        await this.preTriageRepo.delete(id);
+        return { success: true };
+    }
+    async removeAllPreTriages() {
+        await this.preTriageRepo.clear();
+        return { success: true };
+    }
 };
 PatientsService = __decorate([
     Injectable(),

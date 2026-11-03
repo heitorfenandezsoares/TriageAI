@@ -3,7 +3,7 @@ import CabecalhoArea from '../componentes/CabecalhoArea'
 import Entrevista from './Entrevista'
 import { useAuth } from '../auth/AuthContext'
 import {
-  avancarFila, carregarPaciente, carregarPacienteAsync, idPaciente, simularEtapa,
+  avancarFila, carregarPaciente, carregarPacienteAsync, idPaciente, removerPreTriagem, simularEtapa,
   type DadosPaciente, type EtapaAtendimento, type PreTriagem,
 } from '../dados/paciente'
 import { useIdioma } from '../i18n/idioma'
@@ -58,6 +58,13 @@ export default function AreaPaciente() {
     setDados(carregarPaciente(id))
     setAbaAtiva('historico')
     setModoFoco(false)
+  }
+
+  const excluirMinhaPreTriagem = async (idPt: string, ev?: React.MouseEvent) => {
+    ev?.stopPropagation()
+    if (detalhePt?.id === idPt) setDetalhePt(null)
+    await removerPreTriagem(idPt)
+    setDados(carregarPaciente(id))
   }
 
   return (
@@ -251,13 +258,24 @@ export default function AreaPaciente() {
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        {p.alerta ? (
-                          <span className="ap-tag-alerta">⚠️ {p.urgencia ? `Urgência ${p.urgencia}` : a.alertaTag}</span>
-                        ) : (
-                          <span className={`badge ${p.urgencia === 'Médio' ? 'badge-info' : 'badge-sucesso'}`}>
-                            Urgência {p.urgencia ?? 'Baixo'}
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          {p.alerta ? (
+                            <span className="ap-tag-alerta">⚠️ {p.urgencia ? `Urgência ${p.urgencia}` : a.alertaTag}</span>
+                          ) : (
+                            <span className={`badge ${p.urgencia === 'Médio' ? 'badge-info' : 'badge-sucesso'}`}>
+                              Urgência {p.urgencia ?? 'Baixo'}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-contorno btn-sm"
+                            style={{ color: '#dc2626', borderColor: '#fca5a5', padding: '2px 8px', fontSize: '0.75rem' }}
+                            onClick={(ev) => excluirMinhaPreTriagem(p.id, ev)}
+                            title="Remover este prontuário"
+                          >
+                            🗑️ Remover
+                          </button>
+                        </div>
                         <span style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}>
                           {detalhePt?.id === p.id ? 'Ocultar detalhes ▲' : 'Ver detalhes ▼'}
                         </span>
@@ -272,7 +290,17 @@ export default function AreaPaciente() {
                 <div style={{ marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a' }}>📋 Resumo Clínico da Pré-Triagem</h3>
-                    <button type="button" className="btn btn-contorno btn-sm" onClick={() => setDetalhePt(null)}>✕ Fechar</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn btn-contorno btn-sm"
+                        style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                        onClick={() => excluirMinhaPreTriagem(detalhePt.id)}
+                      >
+                        🗑️ Excluir Prontuário
+                      </button>
+                      <button type="button" className="btn btn-contorno btn-sm" onClick={() => setDetalhePt(null)}>✕ Fechar</button>
+                    </div>
                   </div>
 
                   <table className="tabela-triagem" style={{ width: '100%', marginBottom: 12 }}>

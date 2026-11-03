@@ -26,6 +26,23 @@ export interface DadosPaciente {
 
 const VAZIO: DadosPaciente = { etapa: 'nenhuma', posicao: 0, preTriagens: [] }
 const chave = (id: string) => `triageai:paciente:${id}`
+const CHAVE_REMOVIDAS = 'triageai:pre_triagens_removidas'
+
+function obterIdsRemovidos(): Set<string> {
+  try {
+    const raw = localStorage.getItem(CHAVE_REMOVIDAS)
+    if (raw) return new Set<string>(JSON.parse(raw) as string[])
+  } catch { /* ignora */ }
+  return new Set<string>()
+}
+
+function registrarIdsRemovidos(ids: string[]) {
+  try {
+    const atual = obterIdsRemovidos()
+    ids.forEach((id) => atual.add(id))
+    localStorage.setItem(CHAVE_REMOVIDAS, JSON.stringify(Array.from(atual)))
+  } catch { /* ignora */ }
+}
 
 export const idPaciente = (u: Usuario): string => (u as { email?: string; contato?: string; nome: string }).contato || (u as { email?: string; contato?: string; nome: string }).email || u.nome
 
@@ -122,6 +139,7 @@ export function salvarPreTriagem(
 // Busca sincronizada com o backend para a área do paciente
 export async function carregarPacienteAsync(id: string, _nome?: string): Promise<DadosPaciente> {
   const local = carregarPaciente(id)
+  const removidos = obterIdsRemovidos()
   try {
     const remotas = await apiFetch<Array<{
       id: string
@@ -139,8 +157,9 @@ export async function carregarPacienteAsync(id: string, _nome?: string): Promise
     if (Array.isArray(remotas) && remotas.length > 0) {
       const mapa = new Map<string, PreTriagem>()
       
-      // Insere as do banco
+      // Insere as do banco (exceto as já removidas)
       for (const r of remotas) {
+        if (removidos.has(r.id)) continue
         mapa.set(r.id, {
           id: r.id,
           criadaEm: r.criadoEm ? new Date(r.criadoEm).getTime() : Date.now(),
@@ -158,7 +177,7 @@ export async function carregarPacienteAsync(id: string, _nome?: string): Promise
 
       // Mescla com locais recentes se ainda não sincronizadas
       for (const l of local.preTriagens) {
-        if (!mapa.has(l.id)) {
+        if (!removidos.has(l.id) && !mapa.has(l.id)) {
           mapa.set(l.id, l)
         }
       }
@@ -166,7 +185,7 @@ export async function carregarPacienteAsync(id: string, _nome?: string): Promise
       const lista = Array.from(mapa.values()).sort((a, b) => b.criadaEm - a.criadaEm)
       const resultado: DadosPaciente = {
         ...local,
-        etapa: local.etapa === 'nenhuma' && lista.length > 0 ? 'pre_triagem' : local.etapa,
+        etapa: lista.length === 0 && local.etapa === 'pre_triagem' ? 'nenhuma' : (local.etapa === 'nenhuma' && lista.length > 0 ? 'pre_triagem' : local.etapa),
         preTriagens: lista,
       }
       gravar(id, resultado)
@@ -180,6 +199,7 @@ export async function carregarPacienteAsync(id: string, _nome?: string): Promise
 
 export function carregarTodasPreTriagens(): PreTriagem[] {
   const mapa = new Map<string, PreTriagem>()
+  const removidos = obterIdsRemovidos()
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
@@ -187,7 +207,9 @@ export function carregarTodasPreTriagens(): PreTriagem[] {
         const item = localStorage.getItem(k)
         if (item) {
           const parsed = JSON.parse(item) as DadosPaciente
-          parsed?.preTriagens?.forEach((pt) => mapa.set(pt.id, pt))
+          parsed?.preTriagens?.forEach((pt) => {
+            if (!removidos.has(pt.id)) mapa.set(pt.id, pt)
+          })
         }
       }
     }
@@ -197,7 +219,9 @@ export function carregarTodasPreTriagens(): PreTriagem[] {
         const item = sessionStorage.getItem(k)
         if (item) {
           const parsed = JSON.parse(item) as DadosPaciente
-          parsed?.preTriagens?.forEach((pt) => mapa.set(pt.id, pt))
+          parsed?.preTriagens?.forEach((pt) => {
+            if (!removidos.has(pt.id)) mapa.set(pt.id, pt)
+          })
         }
       }
     }
@@ -207,6 +231,7 @@ export function carregarTodasPreTriagens(): PreTriagem[] {
 
 export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
   const locais = carregarTodasPreTriagens()
+  const removidos = obterIdsRemovidos()
   try {
     const remotas = await apiFetch<Array<{
       id: string
@@ -225,6 +250,7 @@ export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
     if (Array.isArray(remotas)) {
       const mapa = new Map<string, PreTriagem>()
       for (const r of remotas) {
+        if (removidos.has(r.id)) continue
         mapa.set(r.id, {
           id: r.id,
           criadaEm: r.criadoEm ? new Date(r.criadoEm).getTime() : Date.now(),
@@ -240,7 +266,7 @@ export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
         })
       }
       for (const l of locais) {
-        if (!mapa.has(l.id)) {
+        if (!removidos.has(l.id) && !mapa.has(l.id)) {
           mapa.set(l.id, l)
         }
       }
@@ -250,6 +276,84 @@ export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
     // Retorna locais se API indisponível
   }
   return locais
+}
+
+export async function removerPreTriagem(idPreTriagem: string): Promise<void> {
+  registrarIdsRemovidos([idPreTriagem])
+
+  const limparStorage = (storage: Storage) => {
+    try {
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i)
+        if (k?.startsWith('triageai:paciente:')) {
+          const item = storage.getItem(k)
+          if (item) {
+            const parsed = JSON.parse(item) as DadosPaciente
+            if (parsed?.preTriagens?.some((pt) => pt.id === idPreTriagem)) {
+              const novas = parsed.preTriagens.filter((pt) => pt.id !== idPreTriagem)
+              const atualizado: DadosPaciente = {
+                ...parsed,
+                etapa: novas.length === 0 && parsed.etapa === 'pre_triagem' ? 'nenhuma' : parsed.etapa,
+                preTriagens: novas,
+              }
+              storage.setItem(k, JSON.stringify(atualizado))
+            }
+          }
+        }
+      }
+    } catch { /* ignora */ }
+  }
+
+  limparStorage(localStorage)
+  limparStorage(sessionStorage)
+
+  try {
+    await apiFetch(`/patients/pre-triage/${encodeURIComponent(idPreTriagem)}`, {
+      method: 'DELETE',
+    })
+  } catch {
+    // Mesmo sem rede, já foi removido localmente e marcado como excluído
+  }
+
+  window.dispatchEvent(new CustomEvent('triageai:pre-triagem-atualizada', { detail: { removida: idPreTriagem } }))
+}
+
+export async function limparTodasPreTriagens(idsAtuais: string[] = []): Promise<void> {
+  if (idsAtuais.length > 0) {
+    registrarIdsRemovidos(idsAtuais)
+  }
+
+  const zerarStorage = (storage: Storage) => {
+    try {
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i)
+        if (k?.startsWith('triageai:paciente:')) {
+          const item = storage.getItem(k)
+          if (item) {
+            const parsed = JSON.parse(item) as DadosPaciente
+            if (parsed?.preTriagens?.length) {
+              registrarIdsRemovidos(parsed.preTriagens.map((p) => p.id))
+              const atualizado: DadosPaciente = {
+                ...parsed,
+                etapa: parsed.etapa === 'pre_triagem' ? 'nenhuma' : parsed.etapa,
+                preTriagens: [],
+              }
+              storage.setItem(k, JSON.stringify(atualizado))
+            }
+          }
+        }
+      }
+    } catch { /* ignora */ }
+  }
+
+  zerarStorage(localStorage)
+  zerarStorage(sessionStorage)
+
+  try {
+    await apiFetch('/patients/pre-triages/todas', { method: 'DELETE' })
+  } catch { /* ignora */ }
+
+  window.dispatchEvent(new CustomEvent('triageai:pre-triagem-atualizada'))
 }
 
 export function simularEtapa(id: string, etapa: EtapaAtendimento): DadosPaciente {
