@@ -5,6 +5,7 @@ import { PatientsService } from './patients.service.js';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  // --- FILA DE ATENDIMENTO ---
   @Post()
   create(@Body() createPatientDto: any) {
     return this.patientsService.create(createPatientDto);
@@ -13,6 +14,11 @@ export class PatientsController {
   @Get()
   findAll() {
     return this.patientsService.findAll();
+  }
+
+  @Post('chamar-proximo')
+  chamarProximo() {
+    return this.patientsService.chamarProximo();
   }
 
   @Get(':id')
@@ -28,5 +34,26 @@ export class PatientsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.patientsService.remove(+id);
+  }
+
+  // --- PRÉ-TRIAGENS ---
+  @Post('pre-triage')
+  createPreTriage(@Body() dto: any) {
+    return this.patientsService.createPreTriage(dto);
+  }
+
+  @Get('pre-triages/todas')
+  findAllPreTriages() {
+    return this.patientsService.findAllPreTriages();
+  }
+
+  @Get('pre-triage/usuario/:pacienteId')
+  findPreTriagesByPatient(@Param('pacienteId') pacienteId: string) {
+    return this.patientsService.findPreTriagesByPatient(pacienteId);
+  }
+
+  @Post('pre-triage/:id/admit')
+  admitPreTriage(@Param('id') id: string) {
+    return this.patientsService.admitPreTriage(id);
   }
 }

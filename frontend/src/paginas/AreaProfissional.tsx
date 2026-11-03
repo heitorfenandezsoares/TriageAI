@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
 import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
 import FilaAtendimento from '../componentes/dashboard/FilaAtendimento'
@@ -8,7 +8,8 @@ import Alertas from '../componentes/dashboard/Alertas'
 import { useAuth } from '../auth/AuthContext'
 import { MODULOS_POR_PERFIL } from '../auth/permissoes'
 import { useDadosTempoReal } from '../dados/useDadosTempoReal'
-import { carregarTodasPreTriagens, type PreTriagem } from '../dados/paciente'
+import { carregarTodasPreTriagens, carregarTodasPreTriagensAsync, type PreTriagem } from '../dados/paciente'
+import { apiFetch } from '../api'
 import { useIdioma } from '../i18n/idioma'
 
 type AbaProfissional = 'visaoGeral' | 'preTriagens' | 'leitos' | 'indicadores'
@@ -24,14 +25,34 @@ export default function AreaProfissional() {
   const modulos: readonly string[] = sessao ? MODULOS_POR_PERFIL[sessao.usuario.perfil] : []
   const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
 
+  const atualizarPreTriagens = () => {
+    carregarTodasPreTriagensAsync().then(setPreTriagens)
+  }
+
+  useEffect(() => {
+    atualizarPreTriagens()
+    const aoAtualizar = () => atualizarPreTriagens()
+    window.addEventListener('triageai:pre-triagem-atualizada', aoAtualizar)
+    return () => window.removeEventListener('triageai:pre-triagem-atualizada', aoAtualizar)
+  }, [])
+
+  const admitirNaFila = async (id: string) => {
+    try {
+      await apiFetch(`/patients/pre-triage/${id}/admit`, { method: 'POST' })
+      alert('Paciente admitido na fila de atendimento com sucesso!')
+      atualizarPreTriagens()
+      if (preTriagemSelecionada?.id === id) {
+        setPreTriagemSelecionada((prev) => (prev ? { ...prev, status: 'em_fila' } : null))
+      }
+    } catch {
+      alert('Não foi possível admitir o paciente na fila. Verifique a conexão com o servidor.')
+    }
+  }
+
   if (!sessao) return null
 
   const hora = new Date(dados.atualizadoEm).toLocaleTimeString(lang === 'pt' ? 'pt-BR' : lang)
   const perfil = sessao.usuario.perfil
-
-  const atualizarPreTriagens = () => {
-    setPreTriagens(carregarTodasPreTriagens())
-  }
 
   const rotuloPerfil: Record<string, string> = {
     enfermeiro: '🩺 Enfermeiro(a) Clínico · Triagem Manchester & Leitos',
@@ -242,10 +263,25 @@ export default function AreaProfissional() {
                       </div>
                     )}
 
-                    <div className="prof-detalhe-acoes">
+                    <div className="prof-detalhe-acoes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {preTriagemSelecionada.status === 'em_fila' ? (
+                        <span className="badge badge-sucesso" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+                          ✓ Paciente já admitido na Fila Ativa
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-cheio"
+                          style={{ background: '#059669', borderColor: '#059669' }}
+                          onClick={() => admitirNaFila(preTriagemSelecionada.id)}
+                        >
+                          📥 Admitir Paciente na Fila do Hospital
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        className="btn btn-cheio"
+                        className="btn btn-contorno"
                         onClick={() =>
                           setChamadaAtiva({
                             idSala: preTriagemSelecionada.id,
@@ -253,10 +289,10 @@ export default function AreaProfissional() {
                           })
                         }
                       >
-                        📹 Entrar na Sala de Vídeo com o Paciente
+                        📹 Entrar em Sala de Vídeo
                       </button>
                       <a className="btn btn-contorno" href="#/triagem">
-                        🩺 Iniciar Triagem Presencial com Manchester
+                        🩺 Iniciar Manchester Presencial
                       </a>
                     </div>
                   </div>

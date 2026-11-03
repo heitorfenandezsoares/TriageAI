@@ -1,3 +1,4 @@
+export type { NivelManchester } from '../i18n/textos'
 import type { NivelManchester } from '../i18n/textos'
 
 export type SetorLeito = 'enfermaria' | 'uti' | 'observacao'

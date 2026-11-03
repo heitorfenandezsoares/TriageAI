@@ -166,25 +166,25 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
         },
       ])
 
-      // Intercepta de forma oculta e salva no prontuário do paciente / banco
-      if (sessao?.usuario.perfil === 'paciente') {
-        const respostasRegistro: Resposta[] = [
-          { passo: 'idade', valor: idade },
-          { passo: 'peso', valor: peso },
-          { passo: 'sintomas', valor: sintomas },
-          { passo: 'risco', valor: opcao },
-        ]
+      // Intercepta e salva de forma persistente no prontuário do paciente e no banco de dados
+      const idParaSalvar = sessao ? idPaciente(sessao.usuario) : 'anonimo'
+      const respostasRegistro: Resposta[] = [
+        { passo: 'idade', valor: idade },
+        { passo: 'peso', valor: peso },
+        { passo: 'sintomas', valor: sintomas },
+        { passo: 'risco', valor: opcao },
+      ]
 
-        salvarPreTriagem(idPaciente(sessao.usuario), respostasRegistro, {
-          idade,
-          peso,
-          queixa: sintomas,
-          alerta: temEmergencia,
-          urgencia,
-          redFlags,
-          tabelaMarkdown: tabelaMd,
-        })
-      }
+      salvarPreTriagem(idParaSalvar, respostasRegistro, {
+        idade,
+        peso,
+        queixa: sintomas,
+        alerta: temEmergencia,
+        urgencia,
+        redFlags,
+        tabelaMarkdown: tabelaMd,
+        pacienteNome: sessao?.usuario.nome || 'Paciente',
+      })
 
       setEtapa('concluido')
       setEsperando(false)

@@ -23,6 +23,9 @@ let PatientsController = class PatientsController {
     findAll() {
         return this.patientsService.findAll();
     }
+    chamarProximo() {
+        return this.patientsService.chamarProximo();
+    }
     findOne(id) {
         return this.patientsService.findOne(+id);
     }
@@ -31,6 +34,18 @@ let PatientsController = class PatientsController {
     }
     remove(id) {
         return this.patientsService.remove(+id);
+    }
+    createPreTriage(dto) {
+        return this.patientsService.createPreTriage(dto);
+    }
+    findAllPreTriages() {
+        return this.patientsService.findAllPreTriages();
+    }
+    findPreTriagesByPatient(pacienteId) {
+        return this.patientsService.findPreTriagesByPatient(pacienteId);
+    }
+    admitPreTriage(id) {
+        return this.patientsService.admitPreTriage(id);
     }
 };
 __decorate([
@@ -46,6 +61,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findAll", null);
+__decorate([
+    Post('chamar-proximo'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "chamarProximo", null);
 __decorate([
     Get(':id'),
     __param(0, Param('id')),
@@ -68,6 +89,33 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "remove", null);
+__decorate([
+    Post('pre-triage'),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "createPreTriage", null);
+__decorate([
+    Get('pre-triages/todas'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "findAllPreTriages", null);
+__decorate([
+    Get('pre-triage/usuario/:pacienteId'),
+    __param(0, Param('pacienteId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "findPreTriagesByPatient", null);
+__decorate([
+    Post('pre-triage/:id/admit'),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "admitPreTriage", null);
 PatientsController = __decorate([
     Controller('patients'),
     __metadata("design:paramtypes", [PatientsService])

@@ -24,7 +24,7 @@ let AuthService = class AuthService {
             const payload = { sub: prof.id, email: prof.email, perfil: prof.perfil, nome: prof.nome };
             return {
                 access_token: await this.jwtService.signAsync(payload),
-                usuario: { nome: prof.nome, perfil: prof.perfil },
+                usuario: { id: prof.id, email: prof.email, contato: prof.email, nome: prof.nome, perfil: prof.perfil },
             };
         }
         const user = await this.usersService.findOne(email);
@@ -32,7 +32,7 @@ let AuthService = class AuthService {
             const payload = { sub: user.id, email: user.email, perfil: user.perfil, nome: user.nome };
             return {
                 access_token: await this.jwtService.signAsync(payload),
-                usuario: { nome: user.nome, perfil: user.perfil },
+                usuario: { id: user.id, email: user.email, contato: user.email, nome: user.nome, perfil: user.perfil },
             };
         }
         throw new UnauthorizedException('Credenciais inválidas');

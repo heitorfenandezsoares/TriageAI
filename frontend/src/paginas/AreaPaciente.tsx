@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
 import Entrevista from './Entrevista'
 import { useAuth } from '../auth/AuthContext'
 import {
-  avancarFila, carregarPaciente, idPaciente, simularEtapa,
-  type DadosPaciente, type EtapaAtendimento,
+  avancarFila, carregarPaciente, carregarPacienteAsync, idPaciente, simularEtapa,
+  type DadosPaciente, type EtapaAtendimento, type PreTriagem,
 } from '../dados/paciente'
 import { useIdioma } from '../i18n/idioma'
 
@@ -19,6 +19,34 @@ export default function AreaPaciente() {
   const [dados, setDados] = useState<DadosPaciente>(() => carregarPaciente(id))
   const [abaAtiva, setAbaAtiva] = useState<AbaPaciente>('status')
   const [modoFoco, setModoFoco] = useState(false)
+  const [detalhePt, setDetalhePt] = useState<PreTriagem | null>(null)
+
+  // Sincroniza dados com backend e localStorage ao montar e ao trocar de aba
+  useEffect(() => {
+    if (!id) return
+    let ativo = true
+    // Atualiza imediatamente do local
+    setDados(carregarPaciente(id))
+
+    // Carrega do backend se disponível
+    carregarPacienteAsync(id, sessao?.usuario.nome).then((atualizados) => {
+      if (ativo) setDados(atualizados)
+    })
+
+    // Escuta evento emitido sempre que uma nova pré-triagem é finalizada
+    const aoAtualizar = () => {
+      setDados(carregarPaciente(id))
+      carregarPacienteAsync(id, sessao?.usuario.nome).then((atualizados) => {
+        if (ativo) setDados(atualizados)
+      })
+    }
+
+    window.addEventListener('triageai:pre-triagem-atualizada', aoAtualizar)
+    return () => {
+      ativo = false
+      window.removeEventListener('triageai:pre-triagem-atualizada', aoAtualizar)
+    }
+  }, [id, abaAtiva, sessao?.usuario.nome])
 
   if (!sessao) return null
   const a = t.areaPaciente
@@ -28,7 +56,7 @@ export default function AreaPaciente() {
 
   const aoConcluirEntrevista = () => {
     setDados(carregarPaciente(id))
-    setAbaAtiva('status')
+    setAbaAtiva('historico')
     setModoFoco(false)
   }
 
@@ -178,31 +206,94 @@ export default function AreaPaciente() {
         {abaAtiva === 'historico' && (
           <div id="painel-historico" role="tabpanel" aria-labelledby="tab-historico" className="ap-painel-aba">
             <section className="db-bloco" aria-labelledby="h-hist">
-              <h2 id="h-hist">{a.historicoTitulo}</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 id="h-hist">{a.historicoTitulo} ({dados.preTriagens.length})</h2>
+                <button
+                  type="button"
+                  className="btn btn-contorno btn-sm"
+                  onClick={() => carregarPacienteAsync(id, sessao?.usuario.nome).then(setDados)}
+                >
+                  🔄 Atualizar
+                </button>
+              </div>
+
               {dados.preTriagens.length === 0 ? (
-                <p>{a.historicoVazio}</p>
+                <div style={{ padding: '24px 0', textAlign: 'center', color: '#556980' }}>
+                  <p>{a.historicoVazio}</p>
+                  <button
+                    type="button"
+                    className="btn btn-cheio btn-sm"
+                    style={{ marginTop: 12 }}
+                    onClick={() => setAbaAtiva('entrevista')}
+                  >
+                    🩺 Iniciar Pré-Triagem Agora
+                  </button>
+                </div>
               ) : (
                 <ul className="ap-historico">
                   {dados.preTriagens.map((p) => (
-                    <li key={p.id}>
-                      <span>
-                        <strong>{p.queixa}</strong>
+                    <li
+                      key={p.id}
+                      style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                      onClick={() => setDetalhePt(detalhePt?.id === p.id ? null : p)}
+                      title="Clique para ver o resumo completo"
+                    >
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ fontSize: '1.05rem' }}>{p.queixa}</strong>
                         {p.idade && p.peso && (
                           <small style={{ display: 'block', color: '#556980', marginTop: 4 }}>
-                            {p.idade} • {p.peso} • Urgência: {p.urgencia ?? (p.alerta ? 'Alto' : 'Baixo')}
+                            Idade: {p.idade} • Peso: {p.peso} • Urgência: {p.urgencia ?? (p.alerta ? 'Alto' : 'Baixo')}
                           </small>
                         )}
-                        <br />
-                        <time dateTime={new Date(p.criadaEm).toISOString()}>{data(p.criadaEm)}</time>
-                      </span>
-                      {p.alerta ? (
-                        <span className="ap-tag-alerta">⚠️ {p.urgencia ? `Urgência ${p.urgencia}` : a.alertaTag}</span>
-                      ) : (
-                        <span className="badge badge-sucesso">Urgência {p.urgencia ?? 'Baixo'}</span>
-                      )}
+                        <time style={{ display: 'block', marginTop: 4, fontSize: '0.82rem', color: '#64748b' }} dateTime={new Date(p.criadaEm).toISOString()}>
+                          {data(p.criadaEm)} {p.status ? `• Status: ${p.status === 'em_fila' ? '✅ Admitido na Fila' : '⏳ Aguardando Recepção'}` : ''}
+                        </time>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        {p.alerta ? (
+                          <span className="ap-tag-alerta">⚠️ {p.urgencia ? `Urgência ${p.urgencia}` : a.alertaTag}</span>
+                        ) : (
+                          <span className={`badge ${p.urgencia === 'Médio' ? 'badge-info' : 'badge-sucesso'}`}>
+                            Urgência {p.urgencia ?? 'Baixo'}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}>
+                          {detalhePt?.id === p.id ? 'Ocultar detalhes ▲' : 'Ver detalhes ▼'}
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {/* Modal / Card expandido com detalhes da pré-triagem */}
+              {detalhePt && (
+                <div style={{ marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a' }}>📋 Resumo Clínico da Pré-Triagem</h3>
+                    <button type="button" className="btn btn-contorno btn-sm" onClick={() => setDetalhePt(null)}>✕ Fechar</button>
+                  </div>
+
+                  <table className="tabela-triagem" style={{ width: '100%', marginBottom: 12 }}>
+                    <tbody>
+                      <tr><td><strong>Idade</strong></td><td>{detalhePt.idade || 'Não informada'}</td></tr>
+                      <tr><td><strong>Peso</strong></td><td>{detalhePt.peso || 'Não informado'}</td></tr>
+                      <tr><td><strong>Sintomas</strong></td><td>{detalhePt.queixa}</td></tr>
+                      <tr><td><strong>Sinais de Alerta</strong></td><td>{detalhePt.redFlags || (detalhePt.alerta ? 'Sim' : 'Não')}</td></tr>
+                      <tr><td><strong>Nível de Urgência</strong></td><td>{detalhePt.urgencia || (detalhePt.alerta ? 'Alto' : 'Baixo')}</td></tr>
+                    </tbody>
+                  </table>
+
+                  {detalhePt.tabelaMarkdown && (
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: '#475569' }}>Visualizar formato Markdown para prontuário</summary>
+                      <pre style={{ background: '#e2e8f0', padding: 8, borderRadius: 4, fontSize: '0.8rem', whiteSpace: 'pre-wrap', marginTop: 4 }}>
+                        {detalhePt.tabelaMarkdown}
+                      </pre>
+                    </details>
+                  )}
+                </div>
               )}
             </section>
           </div>
