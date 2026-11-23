@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
 import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
+import Entrevista from './Entrevista'
 import FilaAtendimento from '../componentes/dashboard/FilaAtendimento'
 import MapaLeitos from '../componentes/dashboard/MapaLeitos'
 import Indicadores from '../componentes/dashboard/Indicadores'
@@ -18,7 +19,7 @@ import {
 import { apiFetch } from '../api'
 import { useIdioma } from '../i18n/idioma'
 
-type AbaProfissional = 'visaoGeral' | 'preTriagens' | 'leitos' | 'indicadores'
+type AbaProfissional = 'visaoGeral' | 'preTriagens' | 'entrevistaOnline' | 'leitos' | 'indicadores'
 
 export default function AreaProfissional() {
   const { sessao } = useAuth()
@@ -27,9 +28,22 @@ export default function AreaProfissional() {
   const [preTriagens, setPreTriagens] = useState<PreTriagem[]>(() => carregarTodasPreTriagens())
   const [preTriagemSelecionada, setPreTriagemSelecionada] = useState<PreTriagem | null>(null)
   const [chamadaAtiva, setChamadaAtiva] = useState<{ idSala: string; nomePaciente: string } | null>(null)
+  const [modoEntrevista, setModoEntrevista] = useState<'video' | 'digital' | 'fila'>('video')
+  const [idSalaManual, setIdSalaManual] = useState(() => `Tele-Gestor-${Math.floor(1000 + Math.random() * 9000)}`)
+  const [copiado, setCopiado] = useState(false)
 
   const modulos: readonly string[] = sessao ? MODULOS_POR_PERFIL[sessao.usuario.perfil] : []
   const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
+
+  const linkPaciente = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}#/entrevista`
+    : '#/entrevista'
+
+  const copiarLink = () => {
+    navigator.clipboard.writeText(linkPaciente)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 3000)
+  }
 
   const atualizarPreTriagens = () => {
     carregarTodasPreTriagensAsync().then(setPreTriagens)
@@ -97,8 +111,25 @@ export default function AreaProfissional() {
           </div>
 
           <div className="db-acoes-topo">
+            <button
+              type="button"
+              className="btn btn-cheio"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#2563eb',
+                borderColor: '#2563eb',
+                color: '#fff',
+                fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+              }}
+              onClick={() => setAbaAtiva('entrevistaOnline')}
+            >
+              📹 Entrevista Online
+            </button>
             {modulos.includes('triagem') && (
-              <a className="btn btn-cheio" href="#/triagem">
+              <a className="btn btn-contorno" href="#/triagem">
                 + {t.dashboard.novaTriagem}
               </a>
             )}
@@ -129,6 +160,16 @@ export default function AreaProfissional() {
           >
             🚨 Pré-Triagens Virtuais (Chatbot)
             {preTriagens.length > 0 && <span className="tab-badge-count">{preTriagens.length}</span>}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={abaAtiva === 'entrevistaOnline'}
+            className={`tab-btn ${abaAtiva === 'entrevistaOnline' ? 'ativo' : ''}`}
+            onClick={() => setAbaAtiva('entrevistaOnline')}
+          >
+            📹 Entrevista Online
           </button>
 
           {modulos.includes('leitos') && (
@@ -374,6 +415,229 @@ export default function AreaProfissional() {
                         🗑️ Excluir Prontuário
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 3. ENTREVISTA ONLINE & TELE-TRIAGEM */}
+        {abaAtiva === 'entrevistaOnline' && (
+          <section className="db-bloco prof-painel-aba" aria-labelledby="h-entrevista-online">
+            <div className="prof-pretriagens-header" style={{ marginBottom: 16 }}>
+              <div>
+                <h2 id="h-entrevista-online">📹 Central de Entrevista Online & Tele-Triagem</h2>
+                <p className="ap-nota">
+                  Atendimento remoto com pacientes via videoconferência ao vivo ou questionário clínico digital.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={`btn ${modoEntrevista === 'video' ? 'btn-cheio' : 'btn-contorno'} btn-sm`}
+                  onClick={() => setModoEntrevista('video')}
+                >
+                  📹 Tele-Triagem por Vídeo
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${modoEntrevista === 'digital' ? 'btn-cheio' : 'btn-contorno'} btn-sm`}
+                  onClick={() => setModoEntrevista('digital')}
+                >
+                  💬 Questionário Clínico / IA
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${modoEntrevista === 'fila' ? 'btn-cheio' : 'btn-contorno'} btn-sm`}
+                  onClick={() => {
+                    atualizarPreTriagens()
+                    setModoEntrevista('fila')
+                  }}
+                >
+                  👥 Pacientes para Tele-Atendimento ({preTriagens.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-aba 1: Vídeo */}
+            {modoEntrevista === 'video' && (
+              <div className="prof-tele-box" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <h3 style={{ fontSize: '1.15rem', color: '#1e293b', margin: 0 }}>
+                      Iniciar Consulta por Vídeo Imediata
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0 }}>
+                      Abra uma sala de tele-entrevista criptografada em alta definição. O paciente se conecta direto pelo celular ou navegador sem instalar nada.
+                    </p>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Identificador / Nome da Sala:</span>
+                      <input
+                        type="text"
+                        value={idSalaManual}
+                        onChange={(e) => setIdSalaManual(e.target.value)}
+                        placeholder="Ex: Tele-Gestor-1"
+                        style={{
+                          padding: '10px 14px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontFamily: 'inherit',
+                          fontSize: '0.9rem',
+                        }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      className="btn btn-cheio"
+                      style={{ background: '#059669', borderColor: '#059669', padding: '12px 20px', fontSize: '0.95rem' }}
+                      onClick={() =>
+                        setChamadaAtiva({
+                          idSala: idSalaManual.trim() || 'Tele-Gestor',
+                          nomePaciente: 'Paciente Remoto',
+                        })
+                      }
+                    >
+                      📹 Abrir Sala de Tele-Entrevista Agora
+                    </button>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#1e293b' }}>
+                      🔗 Link de Acesso do Paciente
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                      Envie este link para o paciente por WhatsApp, E-mail ou SMS para ele entrar na entrevista:
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={linkPaciente}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          background: '#fff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          fontSize: '0.82rem',
+                          color: '#475569',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-contorno btn-sm"
+                        onClick={copiarLink}
+                      >
+                        {copiado ? '✓ Copiado!' : '📋 Copiar'}
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: '8px', padding: '10px 12px', background: '#eff6ff', borderRadius: '6px', fontSize: '0.8rem', color: '#1e40af' }}>
+                      💡 <strong>Dica clínica:</strong> Ao entrar na sala de vídeo, você poderá avaliar a respiração, coloração, queixa e sinais visíveis do paciente e logo após admiti-lo na fila do hospital.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-aba 2: Questionário / Assistente Digital */}
+            {modoEntrevista === 'digital' && (
+              <div className="entrevista-incorporada" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px' }}>
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#1e293b' }}>
+                    Questionário Clínico de Pré-Triagem Online
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                    Preencha ou simule a entrevista interativa de triagem para registrar sintomas, dor e queixas do paciente.
+                  </p>
+                </div>
+                <Entrevista embutido aoConcluir={() => {
+                  atualizarPreTriagens()
+                  alert('Pré-triagem concluída e registrada com sucesso!')
+                  setModoEntrevista('fila')
+                }} />
+              </div>
+            )}
+
+            {/* Sub-aba 3: Fila de Tele-Atendimento */}
+            {modoEntrevista === 'fila' && (
+              <div>
+                {preTriagens.length === 0 ? (
+                  <div className="prof-vazio" style={{ padding: '32px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '1rem', color: '#64748b', margin: '0 0 6px' }}>Nenhum paciente aguardando tele-atendimento no momento.</p>
+                    <small style={{ color: '#94a3b8' }}>Assim que um paciente responder à pré-triagem online ou solicitar atendimento remoto, ele aparecerá aqui com um botão de chamada de vídeo direta.</small>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                    {preTriagens.map((pt) => (
+                      <div
+                        key={pt.id}
+                        style={{
+                          background: '#fff',
+                          border: pt.alerta ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '18px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className={`badge ${pt.urgencia === 'Alto' || pt.alerta ? 'badge-alerta' : 'badge-sucesso'}`}>
+                            {pt.urgencia ? `Urgência ${pt.urgencia}` : (pt.alerta ? '⚠️ Alerta' : '✓ Estável')}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {new Date(pt.criadaEm).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', color: '#1e293b' }}>
+                            {pt.queixa || 'Sintomas não detalhados'}
+                          </h4>
+                          <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                            {pt.idade && `Idade: ${pt.idade} anos • `}{pt.peso && `Peso: ${pt.peso}`}
+                          </p>
+                        </div>
+
+                        {pt.redFlags && (
+                          <div style={{ padding: '6px 10px', borderRadius: '6px', background: pt.alerta ? '#fef2f2' : '#f0fdf4', fontSize: '0.8rem', color: pt.alerta ? '#dc2626' : '#15803d' }}>
+                            {pt.alerta ? `🚩 ${pt.redFlags}` : `✓ ${pt.redFlags}`}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-cheio btn-sm"
+                            style={{ flex: 1, background: '#2563eb', borderColor: '#2563eb' }}
+                            onClick={() =>
+                              setChamadaAtiva({
+                                idSala: pt.id,
+                                nomePaciente: pt.queixa.slice(0, 20) || 'Paciente',
+                              })
+                            }
+                          >
+                            📹 Iniciar Vídeo
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-contorno btn-sm"
+                            onClick={() => {
+                              setPreTriagemSelecionada(pt)
+                              setAbaAtiva('preTriagens')
+                            }}
+                          >
+                            Ver Dados
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
