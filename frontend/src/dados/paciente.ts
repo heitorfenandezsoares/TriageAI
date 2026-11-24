@@ -6,6 +6,7 @@ export type EtapaAtendimento = 'nenhuma' | 'pre_triagem' | 'chegada' | 'fila'
 
 export interface PreTriagem {
   id: string
+  pacienteId?: string
   criadaEm: number
   queixa: string
   alerta: boolean
@@ -89,6 +90,7 @@ export function salvarPreTriagem(
   
   const nova: PreTriagem = {
     id: crypto.randomUUID(),
+    pacienteId: id,
     criadaEm: Date.now(),
     queixa,
     alerta,
@@ -235,6 +237,7 @@ export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
   try {
     const remotas = await apiFetch<Array<{
       id: string
+      pacienteId?: string
       pacienteNome?: string
       idade?: string
       peso?: string
@@ -253,6 +256,7 @@ export async function carregarTodasPreTriagensAsync(): Promise<PreTriagem[]> {
         if (removidos.has(r.id)) continue
         mapa.set(r.id, {
           id: r.id,
+          pacienteId: r.pacienteId,
           criadaEm: r.criadoEm ? new Date(r.criadoEm).getTime() : Date.now(),
           queixa: r.queixa,
           alerta: r.alerta,

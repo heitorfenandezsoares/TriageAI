@@ -7,6 +7,7 @@ import { PatientsModule } from './patients/patients.module.js';
 import { BedsModule } from './beds/beds.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { TelemedicineModule } from './telemedicine/telemedicine.module.js';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { AuthModule } from './auth/auth.module.js';
       
     }),
     PatientsModule, 
-    BedsModule, UsersModule, AuthModule
+    BedsModule, UsersModule, AuthModule, TelemedicineModule
   ],
   controllers: [AppController],
   providers: [AppService],

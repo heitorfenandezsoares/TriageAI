@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
-import SalaVideoTriagem, { extrairCodigoSala } from '../componentes/SalaVideoTriagem'
+import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
+import { criarSala, mensagemErroVideo } from '../dados/servicoTelemedicina'
 import Entrevista from './Entrevista'
 import FilaAtendimento from '../componentes/dashboard/FilaAtendimento'
 import MapaLeitos from '../componentes/dashboard/MapaLeitos'
@@ -27,17 +28,33 @@ export default function AreaProfissional() {
   const [abaAtiva, setAbaAtiva] = useState<AbaProfissional>('visaoGeral')
   const [preTriagens, setPreTriagens] = useState<PreTriagem[]>(() => carregarTodasPreTriagens())
   const [preTriagemSelecionada, setPreTriagemSelecionada] = useState<PreTriagem | null>(null)
-  const [chamadaAtiva, setChamadaAtiva] = useState<{ idSala: string; nomePaciente: string } | null>(null)
+  const [chamadaAtiva, setChamadaAtiva] = useState<{ sala: string; nomePaciente: string } | null>(null)
   const [modoEntrevista, setModoEntrevista] = useState<'video' | 'digital' | 'fila'>('video')
-  const [idSalaManual, setIdSalaManual] = useState(() => `Tele-Gestor-${Math.floor(1000 + Math.random() * 9000)}`)
+  const [emailPacienteManual, setEmailPacienteManual] = useState('')
+  const [salaAtual, setSalaAtual] = useState('')
+  const [erroSala, setErroSala] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
 
   const modulos: readonly string[] = sessao ? MODULOS_POR_PERFIL[sessao.usuario.perfil] : []
   const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
 
-  const linkPaciente = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}#/entrevista?sala=${encodeURIComponent(idSalaManual.trim() || 'Tele-Gestor')}`
-    : `#/entrevista?sala=${encodeURIComponent(idSalaManual.trim() || 'Tele-Gestor')}`
+  const linkPaciente = salaAtual
+    ? `${window.location.origin}${window.location.pathname}#/entrevista?sala=${encodeURIComponent(salaAtual)}`
+    : ''
+
+  // Só e-mails ligam a sala a um paciente específico (é o que o token de login do paciente carrega)
+  const pacienteIdDe = (id?: string) => (id && id.includes('@') ? id.trim() : undefined)
+
+  const abrirSala = async (pacienteId: string | undefined, nomePaciente: string) => {
+    setErroSala(null)
+    try {
+      const { sala } = await criarSala(pacienteIdDe(pacienteId))
+      setSalaAtual(sala)
+      setChamadaAtiva({ sala, nomePaciente })
+    } catch (e) {
+      setErroSala(mensagemErroVideo(e))
+    }
+  }
 
   const copiarLink = () => {
     navigator.clipboard.writeText(linkPaciente)
@@ -395,10 +412,10 @@ export default function AreaProfissional() {
                         type="button"
                         className="btn btn-contorno"
                         onClick={() =>
-                          setChamadaAtiva({
-                            idSala: preTriagemSelecionada.id,
-                            nomePaciente: preTriagemSelecionada.queixa.slice(0, 20) || 'Paciente',
-                          })
+                          void abrirSala(
+                            preTriagemSelecionada.pacienteId,
+                            preTriagemSelecionada.queixa.slice(0, 20) || 'Paciente',
+                          )
                         }
                       >
                         📹 Entrar em Sala de Vídeo
@@ -474,16 +491,12 @@ export default function AreaProfissional() {
                     </p>
 
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Identificador / Nome da Sala:</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>E-mail do paciente (opcional):</span>
                       <input
                         type="text"
-                        value={idSalaManual}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          const extraido = extrairCodigoSala(val)
-                          setIdSalaManual(extraido || val)
-                        }}
-                        placeholder="Ex: Tele-Gestor-1 ou heitorfernandez01@gmail.com"
+                        value={emailPacienteManual}
+                        onChange={(e) => setEmailPacienteManual(e.target.value)}
+                        placeholder="Ex: paciente@email.com"
                         style={{
                           padding: '10px 14px',
                           border: '1px solid #cbd5e1',
@@ -493,7 +506,7 @@ export default function AreaProfissional() {
                         }}
                       />
                       <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                        💡 Digite o e-mail do paciente ou o código da sala. Se colar um link, o código será extraído automaticamente.
+                        💡 Com o e-mail, só esse paciente entra na sala. Sem e-mail, quem tiver o link (e estiver logado como paciente) entra.
                       </small>
                     </label>
 
@@ -504,20 +517,18 @@ export default function AreaProfissional() {
                         </span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                           {preTriagens.slice(0, 4).map((pt) => {
-                            const identificador = (pt as any).pacienteNome || (pt as any).pacienteId || pt.id
                             return (
                               <button
                                 key={pt.id}
                                 type="button"
                                 className="btn btn-contorno btn-sm"
                                 style={{ fontSize: '0.78rem', padding: '4px 10px', background: '#f8fafc' }}
-                                onClick={() => {
-                                  setIdSalaManual(identificador)
-                                  setChamadaAtiva({
-                                    idSala: identificador,
-                                    nomePaciente: (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
-                                  })
-                                }}
+                                onClick={() =>
+                                  void abrirSala(
+                                    pt.pacienteId,
+                                    (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
+                                  )
+                                }
                               >
                                 📞 {(pt as any).pacienteNome || pt.queixa.slice(0, 18)}
                               </button>
@@ -531,13 +542,7 @@ export default function AreaProfissional() {
                       type="button"
                       className="btn btn-cheio"
                       style={{ background: '#059669', borderColor: '#059669', padding: '12px 20px', fontSize: '0.95rem' }}
-                      onClick={() => {
-                        const extraido = extrairCodigoSala(idSalaManual) || idSalaManual.trim() || 'Tele-Gestor'
-                        setChamadaAtiva({
-                          idSala: extraido,
-                          nomePaciente: 'Paciente Remoto',
-                        })
-                      }}
+                      onClick={() => void abrirSala(emailPacienteManual, 'Paciente Remoto')}
                     >
                       📹 Abrir Sala de Tele-Entrevista Agora
                     </button>
@@ -548,13 +553,14 @@ export default function AreaProfissional() {
                       🔗 Link de Acesso do Paciente
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-                      Envie este link para o paciente por WhatsApp ou e-mail. Ao abrir, ele entrará <strong>diretamente nesta mesma sala</strong>:
+                      Envie este link para o paciente por WhatsApp ou e-mail. Ao abrir (já logado como paciente), ele entrará <strong>diretamente nesta mesma sala</strong>:
                     </p>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <input
                         type="text"
                         readOnly
                         value={linkPaciente}
+                        placeholder="Abra a sala para gerar o link"
                         style={{
                           flex: 1,
                           padding: '8px 12px',
@@ -569,13 +575,14 @@ export default function AreaProfissional() {
                         type="button"
                         className="btn btn-contorno btn-sm"
                         onClick={copiarLink}
+                        disabled={!linkPaciente}
                       >
                         {copiado ? '✓ Copiado!' : '📋 Copiar'}
                       </button>
                     </div>
 
                     <div style={{ marginTop: '8px', padding: '10px 12px', background: '#eff6ff', borderRadius: '6px', fontSize: '0.8rem', color: '#1e40af' }}>
-                      💡 <strong>Como funciona a conexão:</strong> O paciente e o gestor precisam ter o mesmo código de sala. Você pode enviar o link acima ao paciente OU digitar o e-mail/código dele no campo da esquerda e clicar em Abrir Sala.
+                      💡 <strong>Como funciona a conexão:</strong> cada sala tem um código aleatório criado pelo servidor. Abra a sala e envie o link gerado ao paciente por WhatsApp ou e-mail.
                     </div>
                   </div>
                 </div>
@@ -655,10 +662,10 @@ export default function AreaProfissional() {
                             className="btn btn-cheio btn-sm"
                             style={{ flex: 1, background: '#2563eb', borderColor: '#2563eb' }}
                             onClick={() =>
-                              setChamadaAtiva({
-                                idSala: (pt as any).pacienteNome || (pt as any).pacienteId || pt.id,
-                                nomePaciente: (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
-                              })
+                              void abrirSala(
+                                pt.pacienteId,
+                                (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
+                              )
                             }
                           >
                             📹 Iniciar Vídeo
@@ -683,12 +690,36 @@ export default function AreaProfissional() {
           </section>
         )}
 
+        {erroSala && (
+          <div
+            role="alert"
+            style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000, maxWidth: 340, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, fontSize: '0.88rem', boxShadow: '0 4px 12px rgba(0,0,0,.12)' }}
+          >
+            {erroSala}{' '}
+            <button type="button" className="btn btn-contorno btn-sm" onClick={() => setErroSala(null)}>OK</button>
+          </div>
+        )}
+
         {/* Modal de Chamada de Vídeo para o Profissional */}
         {chamadaAtiva && (
           <div className="video-modal-overlay">
             <div className="video-modal-conteudo">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '8px 12px', background: '#eff6ff', borderBottom: '1px solid #bfdbfe', fontSize: '0.85rem', color: '#1e40af' }}>
+                <span>🔗 Link do paciente:</span>
+                <input
+                  type="text"
+                  readOnly
+                  value={linkPaciente}
+                  aria-label="Link da sala para o paciente"
+                  style={{ flex: 1, minWidth: 180, padding: '4px 8px', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.8rem' }}
+                />
+                <button type="button" className="btn btn-contorno btn-sm" onClick={copiarLink}>
+                  {copiado ? '✓ Copiado!' : '📋 Copiar'}
+                </button>
+              </div>
               <SalaVideoTriagem
-                idSala={chamadaAtiva.idSala}
+                key={chamadaAtiva.sala}
+                sala={chamadaAtiva.sala}
                 nomeUsuario={sessao.usuario.nome}
                 papel="profissional"
                 aoEncerrar={() => setChamadaAtiva(null)}

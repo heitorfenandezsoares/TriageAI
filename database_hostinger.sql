@@ -58,6 +58,16 @@ CREATE TABLE IF NOT EXISTS `beds` (
   `status` VARCHAR(50) NOT NULL    -- 'disponivel', 'ocupado', 'limpeza', 'reservado'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Salas de tele-triagem por vídeo (JaaS): código aleatório, expira em 24h
+CREATE TABLE IF NOT EXISTS `tele_rooms` (
+  `id` VARCHAR(64) NOT NULL,
+  `pacienteId` VARCHAR(254) NULL,          -- paciente dono da sala (null = qualquer paciente logado com o código)
+  `criadoPor` VARCHAR(254) NOT NULL,
+  `expiraEm` DATETIME NOT NULL,
+  `criadoEm` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- ==============================================================================
 -- CARGA INICIAL DE DADOS (SEEDS)

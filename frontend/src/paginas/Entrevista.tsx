@@ -73,6 +73,7 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
     return searchMatch ? decodeURIComponent(searchMatch[1]) : ''
   })
   const [salaDigitada, setSalaDigitada] = useState('')
+  const [salaAtiva, setSalaAtiva] = useState('')
 
   useEffect(() => {
     if (salaUrl) {
@@ -1072,8 +1073,8 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
     </div>
   )
 
-  const idSalaBase = sessao ? idPaciente(sessao.usuario) : 'Atendimento'
-  const idSala = salaDigitada.trim() || salaUrl || idSalaBase
+  // A sala vem do link/código enviado pelo profissional (criada e autorizada pelo servidor)
+  const idSala = salaAtiva || salaUrl
 
   const seletorModalidade = (
     <div className="ent-seletor-modalidade">
@@ -1110,13 +1111,17 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
         }}
       >
         <div style={{ fontSize: '0.88rem', color: '#334155' }}>
-          <span>Sala conectada: <strong style={{ color: '#2563eb' }}>{idSala}</strong></span>
+          <span>
+            {idSala
+              ? 'Sala informada. Conectando...'
+              : 'Peça ao profissional o link da sala ou cole o código abaixo para entrar.'}
+          </span>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="Entrar na sala do gestor (ex: Tele-Gestor-7456)"
+            placeholder="Código ou link da sala"
             value={salaDigitada}
             onChange={(e) => {
               const val = e.target.value
@@ -1131,26 +1136,26 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
               width: '270px',
             }}
           />
-          {salaDigitada && (
-            <button
-              type="button"
-              className="btn btn-sm btn-contorno"
-              style={{ fontSize: '0.8rem' }}
-              onClick={() => setSalaDigitada('')}
-              title="Voltar para sua sala padrão"
-            >
-              Minha Sala Pessoal
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-sm btn-cheio"
+            disabled={!salaDigitada.trim()}
+            onClick={() => setSalaAtiva(salaDigitada.trim())}
+          >
+            Entrar na sala
+          </button>
         </div>
       </div>
 
-      <SalaVideoTriagem
-        idSala={idSala}
-        nomeUsuario={sessao?.usuario.nome ?? 'Paciente'}
-        papel="paciente"
-        aoEncerrar={() => setModalidade('chat')}
-      />
+      {idSala && (
+        <SalaVideoTriagem
+          key={idSala}
+          sala={idSala}
+          nomeUsuario={sessao?.usuario.nome ?? 'Paciente'}
+          papel="paciente"
+          aoEncerrar={() => setModalidade('chat')}
+        />
+      )}
     </div>
   ) : (
     conteudoChat
