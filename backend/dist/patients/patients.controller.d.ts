@@ -1,4 +1,5 @@
 import { PatientsService } from './patients.service.js';
+import type { UsuarioToken } from '../auth/auth.guard.js';
 export declare class PatientsController {
     private readonly patientsService;
     constructor(patientsService: PatientsService);
@@ -7,7 +8,9 @@ export declare class PatientsController {
     removeAllPreTriages(): Promise<{
         success: boolean;
     }>;
-    findPreTriagesByPatient(pacienteId: string): Promise<import("./pre-triage.entity.js").PreTriage[]>;
+    findPreTriagesByPatient(pacienteId: string, req: {
+        user: UsuarioToken;
+    }): Promise<import("./pre-triage.entity.js").PreTriage[]>;
     admitPreTriage(id: string): Promise<{
         patient: {
             ini: string;

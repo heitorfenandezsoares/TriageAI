@@ -10,19 +10,34 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
+import { Public } from './public.decorator.js';
+const texto = (v) => (typeof v === 'string' ? v : '');
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
         this.authService = authService;
     }
     signIn(signInDto) {
-        const email = signInDto.id || signInDto.email;
-        return this.authService.signIn(email, signInDto.senha);
+        const email = texto(signInDto?.id) || texto(signInDto?.email);
+        const senha = texto(signInDto?.senha);
+        if (!email || !senha)
+            throw new BadRequestException('Informe e-mail e senha.');
+        return this.authService.signIn(email, senha);
     }
     register(registerDto) {
-        return this.authService.register(registerDto);
+        const nome = texto(registerDto?.nome).trim();
+        const id = texto(registerDto?.id).trim();
+        const senha = texto(registerDto?.senha);
+        if (!nome || nome.length > 120)
+            throw new BadRequestException('Nome inválido.');
+        if (!id || id.length > 254)
+            throw new BadRequestException('E-mail/id inválido.');
+        if (senha.length < 8 || senha.length > 72 || !/[A-Za-zÀ-ÿ]/.test(senha) || !/\d/.test(senha)) {
+            throw new BadRequestException('A senha precisa ter 8+ caracteres, com letra e número.');
+        }
+        return this.authService.register({ nome, id, senha });
     }
 };
 __decorate([
@@ -41,6 +56,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "register", null);
 AuthController = __decorate([
+    Public(),
     Controller('auth'),
     __metadata("design:paramtypes", [AuthService])
 ], AuthController);

@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service.js';
+import { Public } from './auth/public.decorator.js';
 let AppController = class AppController {
     appService;
     constructor(appService) {
@@ -19,6 +20,7 @@ let AppController = class AppController {
     }
 };
 __decorate([
+    Public(),
     Get(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),

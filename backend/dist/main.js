@@ -8,10 +8,15 @@ async function bootstrap() {
         }
         next();
     });
+    const origens = (process.env.CORS_ORIGINS ||
+        'https://app.triageia.com,https://triageia.com,https://www.triageia.com,http://localhost:5173,http://127.0.0.1:5173')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
     app.enableCors({
-        origin: true,
+        origin: origens,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-        credentials: true,
+        credentials: false,
     });
     await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }

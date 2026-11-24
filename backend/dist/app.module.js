@@ -13,6 +13,7 @@ import { PatientsModule } from './patients/patients.module.js';
 import { BedsModule } from './beds/beds.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { TelemedicineModule } from './telemedicine/telemedicine.module.js';
 let AppModule = class AppModule {
 };
 AppModule = __decorate([
@@ -27,10 +28,10 @@ AppModule = __decorate([
                 password: process.env.DB_PASSWORD,
                 database: process.env.DB_DATABASE,
                 autoLoadEntities: true,
-                synchronize: true,
+                synchronize: process.env.DB_SYNCHRONIZE === 'true',
             }),
             PatientsModule,
-            BedsModule, UsersModule, AuthModule
+            BedsModule, UsersModule, AuthModule, TelemedicineModule
         ],
         controllers: [AppController],
         providers: [AppService],

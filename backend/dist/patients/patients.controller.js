@@ -10,8 +10,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, ForbiddenException, } from '@nestjs/common';
 import { PatientsService } from './patients.service.js';
+import { Roles, PROFISSIONAIS } from '../auth/roles.decorator.js';
 let PatientsController = class PatientsController {
     patientsService;
     constructor(patientsService) {
@@ -26,7 +27,11 @@ let PatientsController = class PatientsController {
     removeAllPreTriages() {
         return this.patientsService.removeAllPreTriages();
     }
-    findPreTriagesByPatient(pacienteId) {
+    findPreTriagesByPatient(pacienteId, req) {
+        const { perfil, email, sub } = req.user;
+        if (String(perfil).toLowerCase() === 'paciente' && pacienteId !== email && pacienteId !== String(sub)) {
+            throw new ForbiddenException('Acesso negado aos dados de outro paciente');
+        }
         return this.patientsService.findPreTriagesByPatient(pacienteId);
     }
     admitPreTriage(id) {
@@ -58,6 +63,7 @@ let PatientsController = class PatientsController {
     }
 };
 __decorate([
+    Roles('paciente', ...PROFISSIONAIS),
     Post('pre-triage'),
     __param(0, Body()),
     __metadata("design:type", Function),
@@ -65,25 +71,30 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "createPreTriage", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Get('pre-triages/todas'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findAllPreTriages", null);
 __decorate([
+    Roles('gestor'),
     Delete('pre-triages/todas'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "removeAllPreTriages", null);
 __decorate([
+    Roles('paciente', ...PROFISSIONAIS),
     Get('pre-triage/usuario/:pacienteId'),
     __param(0, Param('pacienteId')),
+    __param(1, Req()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findPreTriagesByPatient", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Post('pre-triage/:id/admit'),
     __param(0, Param('id')),
     __metadata("design:type", Function),
@@ -91,6 +102,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "admitPreTriage", null);
 __decorate([
+    Roles('paciente', ...PROFISSIONAIS),
     Delete('pre-triage/:id'),
     __param(0, Param('id')),
     __metadata("design:type", Function),
@@ -98,6 +110,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "removePreTriage", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Post(),
     __param(0, Body()),
     __metadata("design:type", Function),
@@ -111,18 +124,21 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findAll", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Post('chamar-proximo'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "chamarProximo", null);
 __decorate([
+    Roles('enfermeiro', 'gestor'),
     Delete('limpar-fila'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "removeAll", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Get(':id'),
     __param(0, Param('id')),
     __metadata("design:type", Function),
@@ -130,6 +146,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findOne", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Patch(':id'),
     __param(0, Param('id')),
     __param(1, Body()),
@@ -138,6 +155,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "update", null);
 __decorate([
+    Roles(...PROFISSIONAIS),
     Delete(':id'),
     __param(0, Param('id')),
     __metadata("design:type", Function),
