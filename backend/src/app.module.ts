@@ -19,7 +19,8 @@ import { AuthModule } from './auth/auth.module.js';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
-      synchronize: true, // Use carefully in prod
+      // Só liga com DB_SYNCHRONIZE=true (cria/altera tabelas sozinho; nunca em produção)
+      synchronize: process.env.DB_SYNCHRONIZE === 'true',
       
     }),
     PatientsModule, 

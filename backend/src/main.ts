@@ -12,10 +12,17 @@ async function bootstrap() {
     next();
   });
 
+  // Origens permitidas: CORS_ORIGINS (lista separada por vírgula) ou o padrão abaixo.
+  const origens = (process.env.CORS_ORIGINS ??
+    'https://triageia.com,https://www.triageia.com,http://localhost:5173,http://127.0.0.1:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: true,
+    origin: origens,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
+    // A autenticação usa o header Authorization (Bearer), não cookies.
+    credentials: false,
   });
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
