@@ -85,6 +85,9 @@ export default function SalaVideoTriagem({
         const api = new window.JitsiMeetExternalAPI(domain, options)
         apiRef.current = api
 
+        // Iframe já criado; desativa o spinner local para o usuário poder interagir e conceder permissões
+        setCarregando(false)
+
         api.addEventListener('videoConferenceJoined', () => {
           setCarregando(false)
         })
@@ -153,6 +156,11 @@ export default function SalaVideoTriagem({
         </div>
       </div>
 
+      <div style={{ background: '#0f172a', padding: '8px 16px', borderBottom: '1px solid #1e293b', fontSize: '0.8rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <span>🔒 Transmissão criptografada. Se o vídeo demorar ou o navegador travar o iframe, clique em <strong style={{ color: '#38bdf8' }}>↗ Abrir em Nova Aba</strong>.</span>
+        <span>Código da Sala: <strong style={{ color: '#f1f5f9' }}>{nomeSala}</strong></span>
+      </div>
+
       {carregando && (
         <div className="video-triagem-carregando">
           <div className="video-spinner" />
@@ -173,7 +181,7 @@ export default function SalaVideoTriagem({
       <div
         ref={containerRef}
         className="video-triagem-frame"
-        style={{ display: carregando || erroScript ? 'none' : 'block' }}
+        style={{ display: erroScript ? 'none' : 'block' }}
       />
     </div>
   )

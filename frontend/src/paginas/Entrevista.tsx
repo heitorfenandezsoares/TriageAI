@@ -64,6 +64,21 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
   const e = t.entrevista
 
   const [modalidade, setModalidade] = useState<'chat' | 'video'>('chat')
+  const [salaUrl] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const hash = window.location.hash
+    const match = hash.match(/[?&]sala=([^&]+)/)
+    if (match) return decodeURIComponent(match[1])
+    const searchMatch = window.location.search.match(/[?&]sala=([^&]+)/)
+    return searchMatch ? decodeURIComponent(searchMatch[1]) : ''
+  })
+  const [salaDigitada, setSalaDigitada] = useState('')
+
+  useEffect(() => {
+    if (salaUrl) {
+      setModalidade('video')
+    }
+  }, [salaUrl])
   const [etapa, setEtapa] = useState<EtapaConversa>('idade')
   const [mensagens, setMensagens] = useState<Mensagem[]>([
     {
@@ -1057,7 +1072,8 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
     </div>
   )
 
-  const idSala = sessao ? idPaciente(sessao.usuario) : 'Atendimento'
+  const idSalaBase = sessao ? idPaciente(sessao.usuario) : 'Atendimento'
+  const idSala = salaDigitada.trim() || salaUrl || idSalaBase
 
   const seletorModalidade = (
     <div className="ent-seletor-modalidade">
@@ -1079,12 +1095,59 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
   )
 
   const conteudoPrincipal = modalidade === 'video' ? (
-    <SalaVideoTriagem
-      idSala={idSala}
-      nomeUsuario={sessao?.usuario.nome ?? 'Paciente'}
-      papel="paciente"
-      aoEncerrar={() => setModalidade('chat')}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div
+        style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px',
+        }}
+      >
+        <div style={{ fontSize: '0.88rem', color: '#334155' }}>
+          <span>Sala conectada: <strong style={{ color: '#2563eb' }}>{idSala}</strong></span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Entrar na sala do gestor (ex: Tele-Gestor-7456)"
+            value={salaDigitada}
+            onChange={(e) => setSalaDigitada(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.82rem',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              width: '270px',
+            }}
+          />
+          {salaDigitada && (
+            <button
+              type="button"
+              className="btn btn-sm btn-contorno"
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => setSalaDigitada('')}
+              title="Voltar para sua sala padrão"
+            >
+              Minha Sala Pessoal
+            </button>
+          )}
+        </div>
+      </div>
+
+      <SalaVideoTriagem
+        idSala={idSala}
+        nomeUsuario={sessao?.usuario.nome ?? 'Paciente'}
+        papel="paciente"
+        aoEncerrar={() => setModalidade('chat')}
+      />
+    </div>
   ) : (
     conteudoChat
   )

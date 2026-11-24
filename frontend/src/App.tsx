@@ -35,7 +35,7 @@ export default function App() {
       </RotaProtegida>
     )
   }
-  if (rota === '/entrevista') {
+  if (rota.startsWith('/entrevista')) {
     return (
       <RotaProtegida perfis={['paciente']} entrada="paciente">
         <Entrevista />

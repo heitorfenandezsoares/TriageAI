@@ -36,8 +36,8 @@ export default function AreaProfissional() {
   const dados = useDadosTempoReal({ leitos: modulos.includes('leitos') })
 
   const linkPaciente = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}#/entrevista`
-    : '#/entrevista'
+    ? `${window.location.origin}${window.location.pathname}#/entrevista?sala=${encodeURIComponent(idSalaManual.trim() || 'Tele-Gestor')}`
+    : `#/entrevista?sala=${encodeURIComponent(idSalaManual.trim() || 'Tele-Gestor')}`
 
   const copiarLink = () => {
     navigator.clipboard.writeText(linkPaciente)
@@ -479,7 +479,7 @@ export default function AreaProfissional() {
                         type="text"
                         value={idSalaManual}
                         onChange={(e) => setIdSalaManual(e.target.value)}
-                        placeholder="Ex: Tele-Gestor-1"
+                        placeholder="Ex: Tele-Gestor-1 ou heitorfernandez01@gmail.com"
                         style={{
                           padding: '10px 14px',
                           border: '1px solid #cbd5e1',
@@ -488,7 +488,40 @@ export default function AreaProfissional() {
                           fontSize: '0.9rem',
                         }}
                       />
+                      <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                        💡 Para falar com um paciente conectado, digite o e-mail/identificador dele ou envie o link ao lado.
+                      </small>
                     </label>
+
+                    {preTriagens.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                          Conectar direto com paciente que aguarda:
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {preTriagens.slice(0, 4).map((pt) => {
+                            const identificador = (pt as any).pacienteNome || (pt as any).pacienteId || pt.id
+                            return (
+                              <button
+                                key={pt.id}
+                                type="button"
+                                className="btn btn-contorno btn-sm"
+                                style={{ fontSize: '0.78rem', padding: '4px 10px', background: '#f8fafc' }}
+                                onClick={() => {
+                                  setIdSalaManual(identificador)
+                                  setChamadaAtiva({
+                                    idSala: identificador,
+                                    nomePaciente: (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
+                                  })
+                                }}
+                              >
+                                📞 {(pt as any).pacienteNome || pt.queixa.slice(0, 18)}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <button
                       type="button"
@@ -510,7 +543,7 @@ export default function AreaProfissional() {
                       🔗 Link de Acesso do Paciente
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-                      Envie este link para o paciente por WhatsApp, E-mail ou SMS para ele entrar na entrevista:
+                      Envie este link para o paciente por WhatsApp ou e-mail. Ao abrir, ele entrará <strong>diretamente nesta mesma sala</strong>:
                     </p>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <input
@@ -537,7 +570,7 @@ export default function AreaProfissional() {
                     </div>
 
                     <div style={{ marginTop: '8px', padding: '10px 12px', background: '#eff6ff', borderRadius: '6px', fontSize: '0.8rem', color: '#1e40af' }}>
-                      💡 <strong>Dica clínica:</strong> Ao entrar na sala de vídeo, você poderá avaliar a respiração, coloração, queixa e sinais visíveis do paciente e logo após admiti-lo na fila do hospital.
+                      💡 <strong>Como funciona a conexão:</strong> O paciente e o gestor precisam ter o mesmo código de sala. Você pode enviar o link acima ao paciente OU digitar o e-mail/código dele no campo da esquerda e clicar em Abrir Sala.
                     </div>
                   </div>
                 </div>
@@ -618,8 +651,8 @@ export default function AreaProfissional() {
                             style={{ flex: 1, background: '#2563eb', borderColor: '#2563eb' }}
                             onClick={() =>
                               setChamadaAtiva({
-                                idSala: pt.id,
-                                nomePaciente: pt.queixa.slice(0, 20) || 'Paciente',
+                                idSala: (pt as any).pacienteNome || (pt as any).pacienteId || pt.id,
+                                nomePaciente: (pt as any).pacienteNome || pt.queixa.slice(0, 20) || 'Paciente',
                               })
                             }
                           >
