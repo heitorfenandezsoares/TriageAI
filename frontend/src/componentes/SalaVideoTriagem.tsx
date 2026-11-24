@@ -6,6 +6,19 @@ declare global {
   }
 }
 
+export function extrairCodigoSala(entrada: string): string {
+  if (!entrada) return ''
+  const trimmed = entrada.trim()
+  // 1. Se colou uma URL completa com query param (ex: .../#/entrevista?sala=Tele-Gestor-2388 ou ?sala=...)
+  const matchSala = trimmed.match(/[?&]sala=([^&#]+)/)
+  if (matchSala) return decodeURIComponent(matchSala[1])
+  // 2. Se colou uma URL do Jitsi (ex: meet.jit.si/TriageAI-... ou meet.ffmuc.net/TriageAI-...)
+  const matchJitsi = trimmed.match(/(?:meet\.jit\.si|meet\.ffmuc\.net|calls\.disroot\.org)\/([^/?#]+)/)
+  if (matchJitsi) return decodeURIComponent(matchJitsi[1]).replace(/^TriageAI-/, '')
+  // 3. Se digitou com o prefixo TriageAI-
+  return trimmed.replace(/^TriageAI-/, '')
+}
+
 interface SalaVideoTriagemProps {
   idSala: string
   nomeUsuario: string
@@ -23,12 +36,16 @@ export default function SalaVideoTriagem({
   const apiRef = useRef<any>(null)
   const [carregando, setCarregando] = useState(true)
   const [erroScript, setErroScript] = useState(false)
+  const [servidor, setServidor] = useState<'ffmuc' | 'jitsi'>('ffmuc')
 
-  // Nome sanitizado da sala
-  const nomeSala = `TriageAI-${idSala.replace(/[^a-zA-Z0-9_-]/g, '') || 'Atendimento'}`
+  // Nome sanitizado da sala (limpa caso tenham colado a URL inteira)
+  const codigoLimpo = extrairCodigoSala(idSala).replace(/[^a-zA-Z0-9_-]/g, '') || 'Atendimento'
+  const nomeSala = `TriageAI-${codigoLimpo}`
+  const domain = servidor === 'ffmuc' ? 'meet.ffmuc.net' : 'meet.jit.si'
 
   useEffect(() => {
-    let scriptEl = document.querySelector('script[src="https://meet.jit.si/external_api.js"]') as HTMLScriptElement | null
+    const scriptSrc = `https://${domain}/external_api.js`
+    let scriptEl = document.querySelector(`script[src="${scriptSrc}"]`) as HTMLScriptElement | null
 
     const iniciarJitsi = () => {
       if (!window.JitsiMeetExternalAPI || !containerRef.current) {
@@ -38,7 +55,6 @@ export default function SalaVideoTriagem({
       }
 
       try {
-        const domain = 'meet.jit.si'
         const options = {
           roomName: nomeSala,
           width: '100%',
@@ -51,8 +67,10 @@ export default function SalaVideoTriagem({
             startWithAudioMuted: false,
             startWithVideoMuted: false,
             prejoinPageEnabled: false,
+            prejoinConfig: { enabled: false },
             disableDeepLinking: true,
             enableWelcomePage: false,
+            enableClosePage: false,
           },
           interfaceConfigOverwrite: {
             TOOLBAR_BUTTONS: [
@@ -105,7 +123,7 @@ export default function SalaVideoTriagem({
     if (!window.JitsiMeetExternalAPI) {
       if (!scriptEl) {
         scriptEl = document.createElement('script')
-        scriptEl.src = 'https://meet.jit.si/external_api.js'
+        scriptEl.src = scriptSrc
         scriptEl.async = true
         document.body.appendChild(scriptEl)
       }
@@ -114,8 +132,12 @@ export default function SalaVideoTriagem({
         iniciarJitsi()
       }
       scriptEl.onerror = () => {
-        setErroScript(true)
-        setCarregando(false)
+        if (servidor === 'ffmuc') {
+          setServidor('jitsi')
+        } else {
+          setErroScript(true)
+          setCarregando(false)
+        }
       }
     } else {
       iniciarJitsi()
@@ -127,9 +149,9 @@ export default function SalaVideoTriagem({
         apiRef.current = null
       }
     }
-  }, [nomeSala, nomeUsuario, papel, aoEncerrar])
+  }, [nomeSala, nomeUsuario, papel, aoEncerrar, domain, servidor])
 
-  const linkDireto = `https://meet.jit.si/${nomeSala}`
+  const linkDireto = `https://${domain}/${nomeSala}`
 
   return (
     <div className="video-triagem-box">
@@ -157,8 +179,19 @@ export default function SalaVideoTriagem({
       </div>
 
       <div style={{ background: '#0f172a', padding: '8px 16px', borderBottom: '1px solid #1e293b', fontSize: '0.8rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <span>🔒 Transmissão criptografada. Se o vídeo demorar ou o navegador travar o iframe, clique em <strong style={{ color: '#38bdf8' }}>↗ Abrir em Nova Aba</strong>.</span>
-        <span>Código da Sala: <strong style={{ color: '#f1f5f9' }}>{nomeSala}</strong></span>
+        <span>🔒 Transmissão direta sem moderação/login. Se travar, clique em <strong style={{ color: '#38bdf8' }}>↗ Abrir em Nova Aba</strong>.</span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span>Sala: <strong style={{ color: '#f1f5f9' }}>{nomeSala}</strong></span>
+          <button
+            type="button"
+            className="btn btn-sm btn-contorno"
+            style={{ fontSize: '0.72rem', padding: '2px 8px', color: '#cbd5e1', borderColor: '#475569' }}
+            onClick={() => setServidor(s => s === 'ffmuc' ? 'jitsi' : 'ffmuc')}
+            title="Alternar servidor de videoconferência"
+          >
+            Servidor: {servidor === 'ffmuc' ? 'Livre (Sem Login)' : 'meet.jit.si'}
+          </button>
+        </div>
       </div>
 
       {carregando && (

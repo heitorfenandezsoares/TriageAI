@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import CabecalhoArea from '../componentes/CabecalhoArea'
-import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
+import SalaVideoTriagem, { extrairCodigoSala } from '../componentes/SalaVideoTriagem'
 import Entrevista from './Entrevista'
 import FilaAtendimento from '../componentes/dashboard/FilaAtendimento'
 import MapaLeitos from '../componentes/dashboard/MapaLeitos'
@@ -478,7 +478,11 @@ export default function AreaProfissional() {
                       <input
                         type="text"
                         value={idSalaManual}
-                        onChange={(e) => setIdSalaManual(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          const extraido = extrairCodigoSala(val)
+                          setIdSalaManual(extraido || val)
+                        }}
                         placeholder="Ex: Tele-Gestor-1 ou heitorfernandez01@gmail.com"
                         style={{
                           padding: '10px 14px',
@@ -489,7 +493,7 @@ export default function AreaProfissional() {
                         }}
                       />
                       <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                        💡 Para falar com um paciente conectado, digite o e-mail/identificador dele ou envie o link ao lado.
+                        💡 Digite o e-mail do paciente ou o código da sala. Se colar um link, o código será extraído automaticamente.
                       </small>
                     </label>
 
@@ -527,12 +531,13 @@ export default function AreaProfissional() {
                       type="button"
                       className="btn btn-cheio"
                       style={{ background: '#059669', borderColor: '#059669', padding: '12px 20px', fontSize: '0.95rem' }}
-                      onClick={() =>
+                      onClick={() => {
+                        const extraido = extrairCodigoSala(idSalaManual) || idSalaManual.trim() || 'Tele-Gestor'
                         setChamadaAtiva({
-                          idSala: idSalaManual.trim() || 'Tele-Gestor',
+                          idSala: extraido,
                           nomePaciente: 'Paciente Remoto',
                         })
-                      }
+                      }}
                     >
                       📹 Abrir Sala de Tele-Entrevista Agora
                     </button>

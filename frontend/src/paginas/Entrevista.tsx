@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import CabecalhoPublico from '../componentes/CabecalhoPublico'
-import SalaVideoTriagem from '../componentes/SalaVideoTriagem'
+import SalaVideoTriagem, { extrairCodigoSala } from '../componentes/SalaVideoTriagem'
 import { useAuth } from '../auth/AuthContext'
 import { idPaciente, salvarPreTriagem } from '../dados/paciente'
 import {
@@ -67,9 +67,9 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
   const [salaUrl] = useState(() => {
     if (typeof window === 'undefined') return ''
     const hash = window.location.hash
-    const match = hash.match(/[?&]sala=([^&]+)/)
+    const match = hash.match(/[?&]sala=([^&#]+)/)
     if (match) return decodeURIComponent(match[1])
-    const searchMatch = window.location.search.match(/[?&]sala=([^&]+)/)
+    const searchMatch = window.location.search.match(/[?&]sala=([^&#]+)/)
     return searchMatch ? decodeURIComponent(searchMatch[1]) : ''
   })
   const [salaDigitada, setSalaDigitada] = useState('')
@@ -1118,7 +1118,11 @@ export default function Entrevista({ embutido = false, aoConcluir }: EntrevistaP
             type="text"
             placeholder="Entrar na sala do gestor (ex: Tele-Gestor-7456)"
             value={salaDigitada}
-            onChange={(e) => setSalaDigitada(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              const extraido = extrairCodigoSala(val)
+              setSalaDigitada(extraido || val)
+            }}
             style={{
               padding: '6px 12px',
               fontSize: '0.82rem',
